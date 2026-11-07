@@ -1,12 +1,8 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent } from '@testing-library/react-native';
 import React from 'react';
 
 import { Button } from '@/components/common/Button';
-import { ThemeProvider } from '@/hooks/useTheme';
-
-function renderWithTheme(ui: React.ReactElement) {
-  return render(<ThemeProvider>{ui}</ThemeProvider>);
-}
+import { renderWithTheme } from '../testUtils';
 
 describe('Button', () => {
   it('renders its label', async () => {
