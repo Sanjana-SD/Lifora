@@ -18,7 +18,7 @@ describe('EmptyState', () => {
     const { getByText } = await renderWithTheme(
       <EmptyState title="No notes" actionLabel="Add Note" onAction={onAction} />,
     );
-    fireEvent.press(getByText('Add Note'));
+    await fireEvent.press(getByText('Add Note'));
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 

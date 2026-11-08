@@ -24,7 +24,7 @@ describe('QuickAddRow', () => {
 
   it('navigates to the add-transaction stub when Expense is tapped', async () => {
     const { getByText } = await renderWithTheme(<QuickAddRow />);
-    fireEvent.press(getByText('Expense'));
+    await fireEvent.press(getByText('Expense'));
     expect(router.push).toHaveBeenCalledWith('/finance/add-transaction');
   });
 });

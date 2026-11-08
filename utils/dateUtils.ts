@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, isSameDay, isSameYear, isValid, parseISO, subDays } from 'date-fns';
 
 export function formatHeaderDate(date: Date = new Date()): string {
   return format(date, 'EEEE, d MMMM');
@@ -12,4 +12,14 @@ export function getGreeting(date: Date = new Date()): string {
   if (hour >= 12 && hour < 17) return 'Good afternoon';
   if (hour >= 17 && hour < 21) return 'Good evening';
   return 'Good night';
+}
+
+// "Today, 3:42 PM" / "Yesterday" / "7 Nov" / "7 Nov 2025", in device
+// local time. Stored timestamps are UTC ISO strings.
+export function formatRelativeUpdated(isoTimestamp: string, now: Date = new Date()): string {
+  const date = parseISO(isoTimestamp);
+  if (!isValid(date)) return '';
+  if (isSameDay(date, now)) return `Today, ${format(date, 'h:mm a')}`;
+  if (isSameDay(date, subDays(now, 1))) return 'Yesterday';
+  return isSameYear(date, now) ? format(date, 'd MMM') : format(date, 'd MMM yyyy');
 }

@@ -1,4 +1,4 @@
-import { formatHeaderDate, getGreeting } from '@/utils/dateUtils';
+import { formatHeaderDate, formatRelativeUpdated, getGreeting } from '@/utils/dateUtils';
 
 function atHour(hour: number): Date {
   const d = new Date(2026, 10, 7);
@@ -33,5 +33,27 @@ describe('formatHeaderDate', () => {
   it('formats as weekday, day month', () => {
     const date = new Date(2026, 10, 7); // Saturday, 7 November 2026
     expect(formatHeaderDate(date)).toBe('Saturday, 7 November');
+  });
+});
+
+describe('formatRelativeUpdated', () => {
+  const now = new Date(2026, 10, 8, 18, 0, 0);
+  const iso = (d: Date) => d.toISOString();
+
+  it('shows the time for edits made today', () => {
+    expect(formatRelativeUpdated(iso(new Date(2026, 10, 8, 15, 42)), now)).toBe('Today, 3:42 PM');
+  });
+
+  it('shows Yesterday for the previous calendar day', () => {
+    expect(formatRelativeUpdated(iso(new Date(2026, 10, 7, 23, 59)), now)).toBe('Yesterday');
+  });
+
+  it('shows day and month earlier this year, and the year otherwise', () => {
+    expect(formatRelativeUpdated(iso(new Date(2026, 2, 3)), now)).toBe('3 Mar');
+    expect(formatRelativeUpdated(iso(new Date(2025, 2, 3)), now)).toBe('3 Mar 2025');
+  });
+
+  it('returns an empty string for an unparseable timestamp', () => {
+    expect(formatRelativeUpdated('not a date', now)).toBe('');
   });
 });
