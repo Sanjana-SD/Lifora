@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { NotebookPen } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -11,11 +11,11 @@ export function RecentNotesCard() {
   const { colors } = useTheme();
 
   return (
-    <DashboardSection icon={NotebookPen} title="Recent Notes" onPress={() => router.push('/(tabs)/notes')}>
+    <DashboardSection icon={NotebookPen} title="Recent Notes" onPress={() => router.push('/(tabs)/notes' as Href)}>
       <Text style={[styles.empty, { color: colors.textMuted }]}>
         Your notes will show up here once you create one.
       </Text>
-      <AddLink label="Create a note" onPress={() => router.push('/notes/create-note')} />
+      <AddLink label="Create a note" onPress={() => router.push('/notes/create-note' as Href)} />
     </DashboardSection>
   );
 }

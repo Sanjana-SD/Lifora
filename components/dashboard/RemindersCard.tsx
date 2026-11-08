@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { BellRing } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -11,9 +11,9 @@ export function RemindersCard() {
   const { colors } = useTheme();
 
   return (
-    <DashboardSection icon={BellRing} title="Reminders" onPress={() => router.push('/reminders/index')}>
+    <DashboardSection icon={BellRing} title="Reminders" onPress={() => router.push('/reminders/index' as Href)}>
       <Text style={[styles.empty, { color: colors.textMuted }]}>No pending reminders.</Text>
-      <AddLink label="Add a reminder" onPress={() => router.push('/reminders/add-reminder')} />
+      <AddLink label="Add a reminder" onPress={() => router.push('/reminders/add-reminder' as Href)} />
     </DashboardSection>
   );
 }

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Wallet } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -18,7 +18,7 @@ export function FinanceOverviewCard() {
   const { colors } = useTheme();
 
   return (
-    <DashboardSection icon={Wallet} title="Finance" onPress={() => router.push('/(tabs)/finance')}>
+    <DashboardSection icon={Wallet} title="Finance" onPress={() => router.push('/(tabs)/finance' as Href)}>
       <Text style={[styles.empty, { color: colors.textMuted }]}>No expenses logged yet this month.</Text>
       <View style={styles.rows}>
         {ROWS.map((row) => (
@@ -28,7 +28,7 @@ export function FinanceOverviewCard() {
           </View>
         ))}
       </View>
-      <AddLink label="Add an expense" onPress={() => router.push('/finance/add-transaction')} />
+      <AddLink label="Add an expense" onPress={() => router.push('/finance/add-transaction' as Href)} />
     </DashboardSection>
   );
 }

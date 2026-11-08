@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { CalendarClock } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
@@ -10,7 +10,7 @@ export function UpcomingEventsCard() {
   const { colors } = useTheme();
 
   return (
-    <DashboardSection icon={CalendarClock} title="Upcoming" onPress={() => router.push('/(tabs)/calendar')}>
+    <DashboardSection icon={CalendarClock} title="Upcoming" onPress={() => router.push('/(tabs)/calendar' as Href)}>
       <Text style={[styles.empty, { color: colors.textMuted }]}>
         No upcoming events in the next 30 days.
       </Text>

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { BellPlus, CalendarPlus, FilePlus, ListPlus, WalletCards, type LucideIcon } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,15 +10,20 @@ interface QuickAddItem {
   key: string;
   label: string;
   icon: LucideIcon;
-  href: Parameters<typeof router.push>[0];
+  href: Href;
 }
 
+// Cast as Href: expo-router's typed-routes union is only regenerated
+// when the dev server starts (not on `expo export` or `tsc`), so
+// relying on the literal union here makes typechecking depend on
+// dev-server state. These paths are verified against app/ directly
+// in tests/components/dashboard/QuickAddRow.test.tsx instead.
 const ITEMS: QuickAddItem[] = [
-  { key: 'event', label: 'Event', icon: CalendarPlus, href: '/calendar/add-event' },
-  { key: 'task', label: 'Task', icon: ListPlus, href: '/tasks/add-task' },
-  { key: 'reminder', label: 'Reminder', icon: BellPlus, href: '/reminders/add-reminder' },
-  { key: 'expense', label: 'Expense', icon: WalletCards, href: '/finance/add-transaction' },
-  { key: 'note', label: 'Note', icon: FilePlus, href: '/notes/create-note' },
+  { key: 'event', label: 'Event', icon: CalendarPlus, href: '/calendar/add-event' as Href },
+  { key: 'task', label: 'Task', icon: ListPlus, href: '/tasks/add-task' as Href },
+  { key: 'reminder', label: 'Reminder', icon: BellPlus, href: '/reminders/add-reminder' as Href },
+  { key: 'expense', label: 'Expense', icon: WalletCards, href: '/finance/add-transaction' as Href },
+  { key: 'note', label: 'Note', icon: FilePlus, href: '/notes/create-note' as Href },
 ];
 
 export function QuickAddRow() {
