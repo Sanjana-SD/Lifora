@@ -2,7 +2,7 @@
 // migration, as each module's phase introduces them (see
 // Lifora_Complete_PRD.md, Section 8 and Section 14).
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const CREATE_CATEGORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -64,4 +64,19 @@ CREATE TABLE IF NOT EXISTS checklist_items (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON checklist_items(checklist_id, sort_order);
+`;
+
+// result_value is an addition to the PRD schema: the plain value that
+// "copy" puts on the clipboard (e.g. "10379.18"), kept separate from the
+// human-readable result_summary.
+export const CREATE_CALCULATION_HISTORY_TABLE = `
+CREATE TABLE IF NOT EXISTS calculation_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  calculator_type TEXT NOT NULL CHECK (calculator_type IN ('basic', 'emi', 'gst', 'discount', 'split_bill')),
+  input_json TEXT NOT NULL,
+  result_summary TEXT NOT NULL,
+  result_value TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_calculation_history_created ON calculation_history(created_at DESC);
 `;

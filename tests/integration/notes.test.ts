@@ -9,6 +9,7 @@ jest.mock('@/database/database', () => ({
 
 import * as noteService from '@/services/noteService';
 import { runMigrations } from '@/database/migrations/runner';
+import { CURRENT_SCHEMA_VERSION } from '@/database/schema';
 import type { NoteDraft } from '@/types/note';
 
 const draft = (overrides: Partial<NoteDraft> = {}): NoteDraft => ({
@@ -23,7 +24,7 @@ beforeEach(async () => {
 describe('migrations', () => {
   it('reach the current schema version and keep Phase 1 seed data', async () => {
     const version = await mockDb.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(version?.user_version).toBe(2);
+    expect(version?.user_version).toBe(CURRENT_SCHEMA_VERSION);
     const categories = await mockDb.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM categories');
     expect(categories?.n).toBeGreaterThan(0);
   });
@@ -31,7 +32,7 @@ describe('migrations', () => {
   it('are idempotent when run again', async () => {
     await runMigrations(mockDb);
     const version = await mockDb.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(version?.user_version).toBe(2);
+    expect(version?.user_version).toBe(CURRENT_SCHEMA_VERSION);
   });
 });
 
