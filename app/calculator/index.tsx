@@ -1,21 +1,14 @@
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, type Href } from 'expo-router';
-import { Check, Copy, History, Landmark, Receipt, Tag, Users, type LucideIcon } from 'lucide-react-native';
+import { Check, Copy, History } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Keypad } from '@/components/calculator/Keypad';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { SPACING } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { recordCalculation } from '@/services/calculationHistoryService';
 import { INITIAL_CALC_STATE, pressKey, previewResult, type CalcKey } from '@/utils/calculatorInput';
-
-const TOOLS: { label: string; icon: LucideIcon; href: string }[] = [
-  { label: 'EMI', icon: Landmark, href: '/calculator/emi' },
-  { label: 'GST', icon: Receipt, href: '/calculator/gst' },
-  { label: 'Discount', icon: Tag, href: '/calculator/discount' },
-  { label: 'Split Bill', icon: Users, href: '/calculator/split-bill' },
-];
 
 export default function CalculatorScreen() {
   const { colors } = useTheme();
@@ -62,23 +55,6 @@ export default function CalculatorScreen() {
           ),
         }}
       />
-
-      <View style={styles.tools}>
-        {TOOLS.map(({ label, icon: Icon, href }) => (
-          <Pressable
-            key={label}
-            accessibilityRole="button"
-            accessibilityLabel={`${label} calculator`}
-            onPress={() => router.push(href as Href)}
-            style={({ pressed }) => [
-              styles.tool,
-              { borderColor: colors.border, backgroundColor: pressed ? colors.surfaceAlt : colors.surface },
-            ]}>
-            <Icon size={18} color={colors.accent} />
-            <Text style={[styles.toolLabel, { color: colors.text }]}>{label}</Text>
-          </Pressable>
-        ))}
-      </View>
 
       <View style={styles.display}>
         <Text
@@ -129,22 +105,6 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     padding: SPACING.sm,
-  },
-  tools: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  tool: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: SPACING.sm,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-  },
-  toolLabel: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   display: {
     flex: 1,

@@ -4,14 +4,6 @@ import type { CalculationRecord, CalculatorType } from '@/types/calculation';
 // Bounded so the table can't grow forever (PRD Section 16, storage efficiency).
 export const HISTORY_LIMIT = 200;
 
-export const CALCULATOR_LABELS: Record<CalculatorType, string> = {
-  basic: 'Calculator',
-  emi: 'EMI',
-  gst: 'GST',
-  discount: 'Discount',
-  split_bill: 'Split Bill',
-};
-
 export async function recordCalculation(
   calculatorType: CalculatorType,
   inputs: Record<string, unknown>,

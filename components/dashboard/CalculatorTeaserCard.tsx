@@ -12,7 +12,7 @@ export function CalculatorTeaserCard() {
   return (
     <DashboardSection icon={Calculator} title="Calculator" onPress={() => router.push('/calculator/index' as Href)}>
       <Text style={[styles.empty, { color: colors.textMuted }]}>
-        Basic calculator plus EMI, GST, discount, and split-bill tools.
+        Quick everyday arithmetic, with your recent results saved.
       </Text>
     </DashboardSection>
   );

@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { RADIUS, SPACING } from '@/constants/appConfig';
 import { useCalculationHistory } from '@/hooks/useCalculationHistory';
 import { useTheme } from '@/hooks/useTheme';
-import { CALCULATOR_LABELS, clearHistory, deleteEntry } from '@/services/calculationHistoryService';
+import { clearHistory, deleteEntry } from '@/services/calculationHistoryService';
 import type { CalculationRecord } from '@/types/calculation';
 import { formatRelativeUpdated } from '@/utils/dateUtils';
 
@@ -72,14 +72,14 @@ export default function CalculationHistoryScreen() {
             <EmptyState
               icon={History}
               title="No calculations yet"
-              description="Results from the calculator, and any EMI, GST, discount, or split-bill results you save, appear here."
+              description="Every result you calculate with = appears here."
             />
           }
           renderItem={({ item }) => (
             <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.rowText}>
                 <Text style={[styles.type, { color: colors.accent }]}>
-                  {CALCULATOR_LABELS[item.calculatorType]} · {formatRelativeUpdated(item.createdAt)}
+                  {formatRelativeUpdated(item.createdAt)}
                 </Text>
                 <Text style={[styles.summary, { color: colors.text }]}>{item.resultSummary}</Text>
               </View>

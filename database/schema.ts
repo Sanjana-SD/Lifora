@@ -67,12 +67,12 @@ CREATE INDEX IF NOT EXISTS idx_checklist_items_checklist ON checklist_items(chec
 `;
 
 // result_value is an addition to the PRD schema: the plain value that
-// "copy" puts on the clipboard (e.g. "10379.18"), kept separate from the
-// human-readable result_summary.
+// "copy" puts on the clipboard (e.g. "36"), kept separate from the
+// human-readable result_summary ("12×3 = 36").
 export const CREATE_CALCULATION_HISTORY_TABLE = `
 CREATE TABLE IF NOT EXISTS calculation_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  calculator_type TEXT NOT NULL CHECK (calculator_type IN ('basic', 'emi', 'gst', 'discount', 'split_bill')),
+  calculator_type TEXT NOT NULL CHECK (calculator_type IN ('basic')),
   input_json TEXT NOT NULL,
   result_summary TEXT NOT NULL,
   result_value TEXT NOT NULL,

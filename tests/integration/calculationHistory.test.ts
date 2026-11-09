@@ -21,24 +21,21 @@ describe('calculation history (integration)', () => {
 
   it('records entries with their inputs, newest first', async () => {
     await historyService.recordCalculation('basic', { expression: '2+2' }, '2+2 = 4', '4');
-    await historyService.recordCalculation(
-      'emi',
-      { principalPaise: 50_000_000, rateBp: 900, months: 60 },
-      'EMI ₹10,379.18',
-      '10379.18',
-    );
+    await historyService.recordCalculation('basic', { expression: '12×3' }, '12×3 = 36', '36');
     const entries = await historyService.listHistory();
-    expect(entries.map((e) => e.calculatorType)).toEqual(['emi', 'basic']);
-    expect(entries[0].inputs).toEqual({ principalPaise: 50_000_000, rateBp: 900, months: 60 });
-    expect(entries[0].resultValue).toBe('10379.18');
+    expect(entries.map((e) => e.resultSummary)).toEqual(['12×3 = 36', '2+2 = 4']);
+    expect(entries[0].inputs).toEqual({ expression: '12×3' });
+    expect(entries[0].resultValue).toBe('36');
   });
 
-  it('rejects unknown calculator types at the database level', async () => {
-    await expect(
-      mockDb.runAsync(
-        "INSERT INTO calculation_history (calculator_type, input_json, result_summary, result_value) VALUES ('sci', '{}', 'x', 'x')",
-      ),
-    ).rejects.toThrow();
+  it('only accepts basic calculator entries at the database level', async () => {
+    for (const removedType of ['emi', 'gst', 'discount', 'split_bill']) {
+      await expect(
+        mockDb.runAsync(
+          `INSERT INTO calculation_history (calculator_type, input_json, result_summary, result_value) VALUES ('${removedType}', '{}', 'x', 'x')`,
+        ),
+      ).rejects.toThrow();
+    }
   });
 
   it(`keeps at most ${historyService.HISTORY_LIMIT} entries, dropping the oldest`, async () => {

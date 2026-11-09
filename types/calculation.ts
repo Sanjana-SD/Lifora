@@ -1,4 +1,4 @@
-export type CalculatorType = 'basic' | 'emi' | 'gst' | 'discount' | 'split_bill';
+export type CalculatorType = 'basic';
 
 export interface CalculationRecord {
   id: number;
