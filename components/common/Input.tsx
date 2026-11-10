@@ -18,6 +18,9 @@ export function Input({ label, errorMessage, style, ...rest }: InputProps) {
       {label ? <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={colors.textMuted}
+        // The visible label is separate Text, so screen readers need it
+        // passed explicitly to announce which field this is.
+        accessibilityLabel={label}
         style={[
           styles.input,
           { borderColor, color: colors.text, backgroundColor: colors.background },

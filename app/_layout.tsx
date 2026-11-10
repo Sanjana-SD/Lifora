@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { getDatabase } from '@/database/database';
+import { useNotificationLifecycle } from '@/hooks/useNotificationLifecycle';
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -49,6 +50,7 @@ export default function RootLayout() {
 // back button; the tab group renders its own headers.
 function RootStack() {
   const { colors } = useTheme();
+  useNotificationLifecycle(true);
 
   return (
     <Stack

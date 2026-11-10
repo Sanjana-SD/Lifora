@@ -7,6 +7,7 @@ jest.mock('@/database/database', () => ({
   getDatabase: () => Promise.resolve(mockDb),
 }));
 
+import { CURRENT_SCHEMA_VERSION } from '@/database/schema';
 import * as historyService from '@/services/calculationHistoryService';
 
 beforeEach(async () => {
@@ -14,9 +15,9 @@ beforeEach(async () => {
 });
 
 describe('calculation history (integration)', () => {
-  it('migrates to schema version 3', async () => {
+  it('migrates to the current schema version', async () => {
     const version = await mockDb.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(version?.user_version).toBe(3);
+    expect(version?.user_version).toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it('records entries with their inputs, newest first', async () => {

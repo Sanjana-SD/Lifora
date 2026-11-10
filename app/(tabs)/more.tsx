@@ -16,8 +16,8 @@ interface MenuItem {
 // PRD Section 5.1: More holds Reminders & Tasks, Calculator, and Settings.
 const ITEMS: MenuItem[] = [
   { label: 'Calculator', description: 'Everyday arithmetic with history', icon: Calculator, href: '/calculator' },
-  { label: 'Reminders', description: 'Coming in Phase 5', icon: BellRing, href: '/reminders' },
-  { label: 'Tasks', description: 'Coming in Phase 5', icon: ListChecks, href: '/tasks' },
+  { label: 'Reminders', description: 'Timed alerts, repeats, and snooze', icon: BellRing, href: '/reminders' },
+  { label: 'Tasks', description: 'To-dos with deadlines and priorities', icon: ListChecks, href: '/tasks' },
   { label: 'Settings', description: 'Coming in a later phase', icon: Settings, href: null },
 ];
 
