@@ -1,11 +1,13 @@
-import { addMonths, format, getHours, getMinutes, setHours, setMinutes, startOfMonth } from 'date-fns';
+import { addDays, addMonths, format, getHours, getMinutes, isSameDay, setHours, setMinutes, startOfMonth } from 'date-fns';
 import { CalendarDays, ChevronLeft, ChevronRight, Clock, Minus, Plus, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
+import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
+import { Chip } from './Chip';
 import { MonthGrid } from './MonthGrid';
 import { SegmentedControl } from './SegmentedControl';
 
@@ -60,8 +62,10 @@ export function DateTimeField({
     setOpen(true);
   };
 
-  const pickDay = (day: Date) =>
+  const pickDay = (day: Date) => {
     setDraft((d) => setMinutes(setHours(day, getHours(d)), getMinutes(d)));
+    setMonth(startOfMonth(day));
+  };
 
   const hours24 = getHours(draft);
   const hour12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
@@ -82,7 +86,15 @@ export function DateTimeField({
       return d;
     });
 
+  const today = new Date();
+  const quickDays = [
+    { label: 'Today', day: today },
+    { label: 'Tomorrow', day: addDays(today, 1) },
+    { label: 'Next week', day: addDays(today, 7) },
+  ];
+
   const Icon = mode === 'time' ? Clock : CalendarDays;
+  const close = () => setOpen(false);
 
   return (
     <View style={styles.container}>
@@ -92,9 +104,12 @@ export function DateTimeField({
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${value ? format(value, DISPLAY[mode]) : 'not set'}`}
           onPress={openPicker}
-          style={[
+          style={({ pressed }) => [
             styles.field,
-            { borderColor: error ? colors.danger : colors.border, backgroundColor: colors.background },
+            {
+              borderColor: error ? colors.danger : colors.borderStrong,
+              backgroundColor: pressed ? colors.accentSoft : colors.surface,
+            },
           ]}>
           <Icon size={18} color={colors.accent} />
           <Text style={[styles.value, { color: value ? colors.text : colors.textMuted }]}>
@@ -106,28 +121,40 @@ export function DateTimeField({
             accessibilityRole="button"
             accessibilityLabel={`Clear ${label}`}
             onPress={() => onChange(null)}
-            hitSlop={8}
+            hitSlop={12}
             style={styles.clear}>
-            <X size={18} color={colors.textMuted} />
+            <X size={20} color={colors.textMuted} />
           </Pressable>
         ) : null}
       </View>
       {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-          <Text style={[styles.sheetTitle, { color: colors.text }]}>{label}</Text>
-
+      <BottomSheet visible={open} onClose={close} title={label} maxHeight="92%">
+        <ScrollView keyboardShouldPersistTaps="handled">
           {mode !== 'time' ? (
             <>
+              <View style={styles.quick}>
+                {quickDays.map((q) => (
+                  <Chip key={q.label} label={q.label} selected={isSameDay(draft, q.day)} onPress={() => pickDay(q.day)} />
+                ))}
+              </View>
               <View style={styles.monthHeader}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setMonth((m) => addMonths(m, -1))} hitSlop={8}>
-                  <ChevronLeft size={22} color={colors.text} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous month"
+                  onPress={() => setMonth((m) => addMonths(m, -1))}
+                  hitSlop={12}
+                  style={styles.navButton}>
+                  <ChevronLeft size={22} color={colors.accent} />
                 </Pressable>
                 <Text style={[styles.monthTitle, { color: colors.text }]}>{format(month, 'MMMM yyyy')}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Next month" onPress={() => setMonth((m) => addMonths(m, 1))} hitSlop={8}>
-                  <ChevronRight size={22} color={colors.text} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Next month"
+                  onPress={() => setMonth((m) => addMonths(m, 1))}
+                  hitSlop={12}
+                  style={styles.navButton}>
+                  <ChevronRight size={22} color={colors.accent} />
                 </Pressable>
               </View>
               <MonthGrid month={month} selected={draft} onSelect={pickDay} />
@@ -151,18 +178,18 @@ export function DateTimeField({
           ) : null}
 
           <View style={styles.actions}>
-            <Button label="Cancel" variant="secondary" onPress={() => setOpen(false)} style={styles.action} />
+            <Button label="Cancel" variant="secondary" onPress={close} style={styles.action} />
             <Button
               label="Done"
               onPress={() => {
                 onChange(draft);
-                setOpen(false);
+                close();
               }}
               style={styles.action}
             />
           </View>
-        </View>
-      </Modal>
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 }
@@ -180,14 +207,24 @@ function Stepper({
 }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.stepper, { borderColor: colors.border }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Decrease ${label.toLowerCase()}`} onPress={onDecrement} hitSlop={6} style={styles.stepButton}>
+    <View style={[styles.stepper, { borderColor: colors.borderStrong }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Decrease ${label.toLowerCase()}`}
+        onPress={onDecrement}
+        hitSlop={4}
+        style={styles.stepButton}>
         <Minus size={18} color={colors.accent} />
       </Pressable>
       <Text accessibilityLabel={`${label} ${value}`} style={[styles.stepValue, { color: colors.text }]}>
         {value}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Increase ${label.toLowerCase()}`} onPress={onIncrement} hitSlop={6} style={styles.stepButton}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Increase ${label.toLowerCase()}`}
+        onPress={onIncrement}
+        hitSlop={4}
+        style={styles.stepButton}>
         <Plus size={18} color={colors.accent} />
       </Pressable>
     </View>
@@ -196,11 +233,10 @@ function Stepper({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   label: {
-    fontSize: 12.5,
-    fontWeight: '600',
+    ...TYPE.label,
     marginBottom: SPACING.xs,
   },
   fieldRow: {
@@ -213,45 +249,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    minHeight: 46,
+    minHeight: TOUCH_TARGET,
     borderWidth: 1,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
   },
   value: {
-    fontSize: 15,
+    ...TYPE.body,
   },
   clear: {
     padding: SPACING.xs,
   },
   error: {
-    fontSize: 12,
+    ...TYPE.caption,
     marginTop: SPACING.xs,
   },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-  },
-  sheet: {
-    borderTopLeftRadius: RADIUS.lg,
-    borderTopRightRadius: RADIUS.lg,
-    borderWidth: 1,
-    padding: SPACING.lg,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: SPACING.sm,
+  quick: {
+    flexDirection: 'row',
+    marginBottom: SPACING.md,
   },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  navButton: {
+    padding: SPACING.sm,
   },
   monthTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    ...TYPE.subheading,
   },
   timeRow: {
     flexDirection: 'row',
@@ -270,12 +297,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   stepButton: {
-    padding: SPACING.sm,
+    width: 40,
+    height: TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stepValue: {
     fontSize: 18,
     fontWeight: '700',
-    minWidth: 28,
+    minWidth: 26,
     textAlign: 'center',
   },
   meridiem: {

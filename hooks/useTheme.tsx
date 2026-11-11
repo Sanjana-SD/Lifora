@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
 import { ColorScheme, ThemeColors, ThemePreference, colorsFor } from '@/constants/colors';
+import * as settingsService from '@/services/settingsService';
 
 interface ThemeContextValue {
   preference: ThemePreference;
@@ -12,9 +13,29 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  /** The saved choice, loaded before first paint so the app never flashes the wrong theme. */
+  initialPreference?: ThemePreference;
+  /** Save changes to app_settings. Off in tests that have no database. */
+  persist?: boolean;
+}
+
+export function ThemeProvider({ children, initialPreference = 'system', persist = false }: ThemeProviderProps) {
   const systemScheme = useSystemColorScheme();
-  const [preference, setPreference] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>(initialPreference);
+
+  const setPreference = useCallback(
+    (next: ThemePreference) => {
+      setPreferenceState(next);
+      if (persist) {
+        settingsService.setThemePreference(next).catch(() => {
+          // The choice still applies for this session.
+        });
+      }
+    },
+    [persist],
+  );
 
   const scheme: ColorScheme = preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
 
@@ -25,7 +46,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       colors: colorsFor(scheme),
       setPreference,
     }),
-    [preference, scheme],
+    [preference, scheme, setPreference],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

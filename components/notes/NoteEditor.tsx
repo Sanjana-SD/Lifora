@@ -2,8 +2,6 @@ import { Stack, router } from 'expo-router';
 import { Check, Pin, PinOff, Star, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,11 +10,12 @@ import {
   View,
 } from 'react-native';
 
+import { KeyboardAwareScreen } from '@/components/common/KeyboardAwareScreen';
 import { Chip } from '@/components/common/Chip';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { SPACING } from '@/constants/appConfig';
 import { NOTE_CATEGORIES, type NoteCategory } from '@/constants/noteCategories';
-import { NOTE_COLOR_KEYS, NOTE_COLOR_LABELS, noteSwatch, type NoteColorKey } from '@/constants/noteColors';
+import { NOTE_COLOR_KEYS, NOTE_COLOR_LABELS, noteSwatch, noteSwatchInk, type NoteColorKey } from '@/constants/noteColors';
 import { useAutosave } from '@/hooks/useAutosave';
 import { useTheme } from '@/hooks/useTheme';
 import * as noteService from '@/services/noteService';
@@ -114,9 +113,7 @@ export function NoteEditor({ initialNote }: NoteEditorProps) {
   const canToggle = !empty;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAwareScreen>
       <Stack.Screen
         options={{
           title: initialNote ? 'Edit Note' : 'New Note',
@@ -185,7 +182,7 @@ export function NoteEditor({ initialNote }: NoteEditorProps) {
               <Pressable
                 key={key}
                 accessibilityRole="radio"
-                accessibilityState={{ selected }}
+                accessibilityState={{ checked: selected }}
                 accessibilityLabel={`Colour: ${NOTE_COLOR_LABELS[key]}`}
                 onPress={() => update({ colorKey: key })}
                 style={[
@@ -195,7 +192,7 @@ export function NoteEditor({ initialNote }: NoteEditorProps) {
                     borderColor: selected ? colors.text : colors.border,
                   },
                 ]}>
-                {selected ? <Check size={16} color={key === 'default' ? colors.text : '#FFFFFF'} /> : null}
+                {selected ? <Check size={16} color={noteSwatchInk(key, scheme)} /> : null}
               </Pressable>
             );
           })}
@@ -224,7 +221,7 @@ export function NoteEditor({ initialNote }: NoteEditorProps) {
         onConfirm={deleteNote}
         onCancel={() => setConfirmingDelete(false)}
       />
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 }
 

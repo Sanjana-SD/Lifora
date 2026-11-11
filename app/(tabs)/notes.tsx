@@ -1,17 +1,18 @@
 import { router, type Href } from 'expo-router';
-import { ListChecks, NotebookPen, Search, SearchX } from 'lucide-react-native';
+import { ListChecks, NotebookPen, SearchX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/common/Button';
 import { Chip } from '@/components/common/Chip';
 import { EmptyState } from '@/components/common/EmptyState';
+import { SearchField } from '@/components/common/SearchField';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { ChecklistCard } from '@/components/notes/ChecklistCard';
 import { NewChecklistSheet } from '@/components/notes/NewChecklistSheet';
 import { NoteCard } from '@/components/notes/NoteCard';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { SPACING } from '@/constants/appConfig';
 import { NOTE_CATEGORIES, type NoteCategory } from '@/constants/noteCategories';
 import { useChecklists } from '@/hooks/useChecklists';
 import { useNotes } from '@/hooks/useNotes';
@@ -58,18 +59,7 @@ function NotesPane() {
 
   return (
     <View style={styles.flex}>
-      <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-        <Search size={18} color={colors.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search notes"
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel="Search notes"
-          returnKeyType="search"
-          style={[styles.searchInput, { color: colors.text }]}
-        />
-      </View>
+      <SearchField value={search} onChangeText={setSearch} placeholder="Search notes" style={styles.searchBox} />
       <View>
         <ScrollView
           horizontal
@@ -188,19 +178,7 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
     marginHorizontal: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-    minHeight: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: SPACING.sm,
   },
   filters: {
     paddingHorizontal: SPACING.lg,

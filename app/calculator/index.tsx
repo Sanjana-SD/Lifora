@@ -3,15 +3,17 @@ import { Stack, router, type Href } from 'expo-router';
 import { Check, Copy, History } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Keypad } from '@/components/calculator/Keypad';
-import { SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { recordCalculation } from '@/services/calculationHistoryService';
 import { INITIAL_CALC_STATE, pressKey, previewResult, type CalcKey } from '@/utils/calculatorInput';
 
 export default function CalculatorScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [state, setState] = useState(INITIAL_CALC_STATE);
   const stateRef = useRef(state);
   const [copied, setCopied] = useState(false);
@@ -39,7 +41,7 @@ export default function CalculatorScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: SPACING.lg + insets.bottom }]}>
       <Stack.Screen
         options={{
           title: 'Calculator',
@@ -50,13 +52,13 @@ export default function CalculatorScreen() {
               onPress={() => router.push('/calculator/history' as Href)}
               hitSlop={8}
               style={styles.headerIcon}>
-              <History size={22} color={colors.text} />
+              <History size={22} color={colors.accent} />
             </Pressable>
           ),
         }}
       />
 
-      <View style={styles.display}>
+      <View style={[styles.display, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text
           accessibilityLabel="Expression"
           style={[
@@ -74,9 +76,12 @@ export default function CalculatorScreen() {
               accessibilityLabel="Copy result"
               onPress={copy}
               hitSlop={8}
-              style={styles.copy}>
-              {copied ? <Check size={16} color={colors.accent} /> : <Copy size={16} color={colors.textMuted} />}
-              <Text style={[styles.copyText, { color: copied ? colors.accent : colors.textMuted }]}>
+              style={({ pressed }) => [
+                styles.copy,
+                { backgroundColor: copied || pressed ? colors.accentSoft : colors.surfaceAlt },
+              ]}>
+              {copied ? <Check size={16} color={colors.accent} /> : <Copy size={16} color={colors.accent} />}
+              <Text style={[styles.copyText, { color: colors.accent }]}>
                 {copied ? 'Copied' : 'Copy'}
               </Text>
             </Pressable>
@@ -106,35 +111,46 @@ const styles = StyleSheet.create({
   headerIcon: {
     padding: SPACING.sm,
   },
+  // A flexible display card above a fixed keypad keeps the keys in thumb reach on tall phones.
   display: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingVertical: SPACING.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   expression: {
-    fontSize: 44,
+    fontSize: 56,
+    lineHeight: 64,
     fontWeight: '600',
     textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   secondaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 28,
+    gap: SPACING.sm,
+    minHeight: TOUCH_TARGET,
     marginTop: SPACING.xs,
   },
   secondary: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 22,
     textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   copy: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: SPACING.xs,
+    minHeight: 36,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
   },
   copyText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...TYPE.label,
   },
 });

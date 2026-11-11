@@ -1,8 +1,9 @@
-import { Check, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { Checkbox } from '@/components/common/Checkbox';
+import { SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { CHECKLIST_ITEM_MAX_LENGTH } from '@/services/checklistService';
 import type { ChecklistItem } from '@/types/checklist';
@@ -38,27 +39,14 @@ export function ChecklistItemRow({ item, onToggle, onRename, onDelete }: Checkli
 
   return (
     <View style={[styles.row, { borderColor: colors.border }]}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: item.isCompleted }}
-        accessibilityLabel={item.label}
-        onPress={onToggle}
-        hitSlop={8}
-        style={[
-          styles.checkbox,
-          {
-            borderColor: item.isCompleted ? colors.accent : colors.border,
-            backgroundColor: item.isCompleted ? colors.accent : 'transparent',
-          },
-        ]}>
-        {item.isCompleted ? <Check size={16} color={colors.onAccent} /> : null}
-      </Pressable>
+      <Checkbox checked={item.isCompleted} onPress={onToggle} accessibilityLabel={item.label} />
       <TextInput
         value={label}
         onChangeText={setLabel}
         onEndEditing={commit}
         maxLength={CHECKLIST_ITEM_MAX_LENGTH}
         accessibilityLabel={`Edit item: ${item.label}`}
+        selectionColor={colors.accent}
         style={[
           styles.label,
           {
@@ -67,7 +55,12 @@ export function ChecklistItemRow({ item, onToggle, onRename, onDelete }: Checkli
           },
         ]}
       />
-      <Pressable accessibilityRole="button" accessibilityLabel={`Delete item: ${item.label}`} onPress={onDelete} hitSlop={8}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Delete item: ${item.label}`}
+        onPress={onDelete}
+        hitSlop={14}
+        style={styles.delete}>
         <X size={18} color={colors.textMuted} />
       </Pressable>
     </View>
@@ -79,20 +72,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    paddingVertical: SPACING.sm,
+    minHeight: TOUCH_TARGET + 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   label: {
     flex: 1,
-    fontSize: 15,
-    paddingVertical: SPACING.xs,
+    ...TYPE.body,
+    paddingVertical: SPACING.sm,
+  },
+  delete: {
+    padding: SPACING.xs,
   },
 });

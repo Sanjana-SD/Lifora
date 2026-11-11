@@ -38,17 +38,11 @@ function kindOf(key: CalcKey): KeyKind {
 export function Keypad({ onPress }: { onPress: (key: CalcKey) => void }) {
   const { colors } = useTheme();
 
-  const background: Record<KeyKind, string> = {
-    digit: colors.surface,
-    function: colors.surfaceAlt,
-    operator: colors.surfaceAlt,
-    equals: colors.accent,
-  };
-  const foreground: Record<KeyKind, string> = {
-    digit: colors.text,
-    function: colors.text,
-    operator: colors.accent,
-    equals: colors.onAccent,
+  const style: Record<KeyKind, { bg: string; pressed: string; fg: string; border: string }> = {
+    digit: { bg: colors.surface, pressed: colors.surfaceAlt, fg: colors.text, border: colors.border },
+    function: { bg: colors.surfaceAlt, pressed: colors.border, fg: colors.accent, border: colors.border },
+    operator: { bg: colors.accentSoft, pressed: colors.border, fg: colors.accent, border: colors.accentSoft },
+    equals: { bg: colors.primary, pressed: colors.primaryPressed, fg: colors.onPrimary, border: colors.primary },
   };
 
   return (
@@ -56,7 +50,7 @@ export function Keypad({ onPress }: { onPress: (key: CalcKey) => void }) {
       {ROWS.map((row, r) => (
         <View key={r} style={styles.row}>
           {row.map((key) => {
-            const kind = kindOf(key);
+            const s = style[kindOf(key)];
             return (
               <Pressable
                 key={key}
@@ -66,12 +60,12 @@ export function Keypad({ onPress }: { onPress: (key: CalcKey) => void }) {
                 style={({ pressed }) => [
                   styles.key,
                   key === '0' && styles.wide,
-                  { backgroundColor: background[kind], borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                  { backgroundColor: pressed ? s.pressed : s.bg, borderColor: s.border },
                 ]}>
                 {key === '⌫' ? (
-                  <Delete size={24} color={foreground[kind]} />
+                  <Delete size={26} color={s.fg} />
                 ) : (
-                  <Text style={[styles.keyText, { color: foreground[kind] }]}>{key}</Text>
+                  <Text style={[styles.keyText, { color: s.fg }, kindOf(key) !== 'digit' && styles.symbol]}>{key}</Text>
                 )}
               </Pressable>
             );
@@ -84,25 +78,28 @@ export function Keypad({ onPress }: { onPress: (key: CalcKey) => void }) {
 
 const styles = StyleSheet.create({
   pad: {
-    gap: SPACING.sm,
+    gap: SPACING.sm + 2,
   },
   row: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    gap: SPACING.sm + 2,
   },
   key: {
     flex: 1,
-    height: 62,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
+    height: 68,
+    borderRadius: RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
   wide: {
-    flex: 2.08,
+    flex: 2.12,
   },
   keyText: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '500',
+  },
+  symbol: {
+    fontWeight: '700',
   },
 });

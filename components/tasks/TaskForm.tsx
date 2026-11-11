@@ -1,7 +1,8 @@
 import { addDays, setHours, setMinutes, startOfDay } from 'date-fns';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { KeyboardAwareScreen } from '@/components/common/KeyboardAwareScreen';
 import { Button } from '@/components/common/Button';
 import { DateTimeField } from '@/components/common/DateTimeField';
 import { CategoryPicker, FieldLabel, PriorityPicker } from '@/components/common/FormPickers';
@@ -58,9 +59,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, footer }: TaskFormPro
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAwareScreen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {draft.notify ? <NotificationPermissionBanner /> : null}
         <Input
@@ -126,7 +125,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, footer }: TaskFormPro
         <Button label={submitLabel} onPress={submit} loading={saving} style={styles.submit} />
         {footer}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 }
 

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TYPE } from '@/constants/appConfig';
+import { elevation } from '@/constants/elevation';
 import { useTheme } from '@/hooks/useTheme';
 
 interface SegmentedControlProps<T extends string> {
@@ -16,7 +17,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
   return (
     <View
       accessibilityRole="tablist"
-      style={[styles.container, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+      style={[styles.track, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -25,8 +26,12 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
-            style={[styles.segment, selected && { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.label, { color: selected ? colors.text : colors.textMuted }]}>{option.label}</Text>
+            style={[styles.segment, selected && [{ backgroundColor: colors.surface }, elevation(2, colors)]]}>
+            <Text
+              style={[styles.label, { color: selected ? colors.accent : colors.textMuted, fontWeight: selected ? '700' : '600' }]}
+              numberOfLines={1}>
+              {option.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -35,7 +40,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
 }
 
 const styles = StyleSheet.create({
-  container: {
+  track: {
     flexDirection: 'row',
     borderRadius: RADIUS.md,
     borderWidth: 1,
@@ -43,16 +48,13 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    minHeight: 36,
+    minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
     paddingHorizontal: SPACING.sm,
   },
   label: {
-    fontSize: 13.5,
-    fontWeight: '600',
+    ...TYPE.label,
   },
 });

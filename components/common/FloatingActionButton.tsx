@@ -1,24 +1,39 @@
 import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RADIUS, SPACING } from '@/constants/appConfig';
+import { elevation } from '@/constants/elevation';
 import { useTheme } from '@/hooks/useTheme';
 
 interface FloatingActionButtonProps {
   accessibilityLabel: string;
   onPress: () => void;
+  /**
+   * True on screens without a tab bar: the app draws edge-to-edge, so the
+   * button must clear Android's gesture/navigation bar itself.
+   */
+  clearSystemBar?: boolean;
 }
 
-export function FloatingActionButton({ accessibilityLabel, onPress }: FloatingActionButtonProps) {
+/** Bottom-right primary action, in easy reach of the right thumb. */
+export function FloatingActionButton({ accessibilityLabel, onPress, clearSystemBar = false }: FloatingActionButtonProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [styles.fab, { backgroundColor: colors.accent, opacity: pressed ? 0.85 : 1 }]}>
-      <Plus size={26} color={colors.onAccent} />
+      style={({ pressed }) => [
+        styles.fab,
+        { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
+        clearSystemBar && { bottom: SPACING.lg + insets.bottom },
+        elevation(2, colors),
+      ]}>
+      <Plus size={28} color={colors.onPrimary} />
     </Pressable>
   );
 }
@@ -26,17 +41,12 @@ export function FloatingActionButton({ accessibilityLabel, onPress }: FloatingAc
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: SPACING.lg,
+    bottom: SPACING.lg,
+    width: 60,
+    height: 60,
+    borderRadius: RADIUS.lg + 2,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
   },
 });

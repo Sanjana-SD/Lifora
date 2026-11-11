@@ -1,15 +1,17 @@
+import type { LucideIcon } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
-import { RADIUS, SPACING } from '@/constants/appConfig';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 interface ButtonProps {
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
+  icon?: LucideIcon;
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
@@ -20,6 +22,7 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  icon: Icon,
   disabled = false,
   loading = false,
   style,
@@ -28,29 +31,34 @@ export function Button({
   const { colors } = useTheme();
   const isDisabled = disabled || loading;
 
-  const backgroundColor =
-    variant === 'primary' ? colors.accent : variant === 'danger' ? colors.danger : 'transparent';
-  const borderColor = variant === 'secondary' ? colors.border : backgroundColor;
-  const textColor = variant === 'secondary' ? colors.text : colors.onAccent;
+  const palette = {
+    primary: { bg: colors.primary, pressed: colors.primaryPressed, border: colors.primary, fg: colors.onPrimary },
+    danger: { bg: colors.danger, pressed: colors.danger, border: colors.danger, fg: colors.onPrimary },
+    secondary: { bg: colors.surface, pressed: colors.accentSoft, border: colors.borderStrong, fg: colors.accent },
+    ghost: { bg: 'transparent', pressed: colors.accentSoft, border: 'transparent', fg: colors.accent },
+  }[variant];
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled }}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        { backgroundColor, borderColor },
+        { backgroundColor: pressed && !isDisabled ? palette.pressed : palette.bg, borderColor: palette.border },
         isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
         style,
       ]}>
       {loading ? (
-        <ActivityIndicator color={textColor} />
+        <ActivityIndicator color={palette.fg} />
       ) : (
-        <Text style={[styles.label, { color: textColor }]}>{label}</Text>
+        <View style={styles.content}>
+          {Icon ? <Icon size={18} color={palette.fg} /> : null}
+          <Text style={[styles.label, { color: palette.fg }]}>{label}</Text>
+        </View>
       )}
     </Pressable>
   );
@@ -58,22 +66,22 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 44,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    minHeight: TOUCH_TARGET,
+    paddingHorizontal: SPACING.xl,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
   label: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPE.subheading,
   },
   disabled: {
-    opacity: 0.5,
-  },
-  pressed: {
-    opacity: 0.85,
+    opacity: 0.45,
   },
 });

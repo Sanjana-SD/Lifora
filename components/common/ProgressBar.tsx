@@ -11,13 +11,14 @@ interface ProgressBarProps {
 export function ProgressBar({ percent, color }: ProgressBarProps) {
   const { colors } = useTheme();
   const clamped = Math.max(0, Math.min(100, percent));
+  const fill = color ?? (clamped >= 100 ? colors.success : colors.accent);
 
   return (
     <View
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: clamped }}
-      style={[styles.track, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-      <View style={[styles.fill, { width: `${clamped}%`, backgroundColor: color ?? colors.accent }]} />
+      style={[styles.track, { backgroundColor: colors.accentSoft }]}>
+      <View style={[styles.fill, { width: `${clamped}%`, backgroundColor: fill }]} />
     </View>
   );
 }
@@ -26,7 +27,6 @@ const styles = StyleSheet.create({
   track: {
     height: 8,
     borderRadius: 4,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   fill: {

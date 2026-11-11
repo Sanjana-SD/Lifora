@@ -1,9 +1,10 @@
-import { Bell, Check } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Checkbox } from '@/components/common/Checkbox';
 import { PriorityBadge } from '@/components/common/PriorityBadge';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { isOverdue } from '@/services/taskService';
 import type { Task } from '@/types/task';
@@ -14,6 +15,8 @@ interface TaskRowProps {
   onToggle: () => void;
   onPress: () => void;
   now?: Date;
+  /** Borderless variant for use inside a dashboard card. */
+  compact?: boolean;
 }
 
 export function deadlineLabel(task: Task, now: Date = new Date()): string | null {
@@ -21,28 +24,23 @@ export function deadlineLabel(task: Task, now: Date = new Date()): string | null
   return `Due ${formatDue(task.deadline, now, task.deadlineHasTime)}`;
 }
 
-export function TaskRow({ task: t, onToggle, onPress, now = new Date() }: TaskRowProps) {
+export function TaskRow({ task: t, onToggle, onPress, now = new Date(), compact = false }: TaskRowProps) {
   const { colors } = useTheme();
   const overdue = isOverdue(t, now);
   const due = deadlineLabel(t, now);
 
   return (
-    <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: t.isCompleted }}
-        accessibilityLabel={t.isCompleted ? `Mark ${t.title} as not done` : `Mark ${t.title} as done`}
+    <View
+      style={[
+        styles.row,
+        compact ? styles.compact : [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }],
+      ]}>
+      <Checkbox
+        checked={t.isCompleted}
+        overdue={overdue}
         onPress={onToggle}
-        hitSlop={8}
-        style={[
-          styles.checkbox,
-          {
-            borderColor: t.isCompleted ? colors.accent : overdue ? colors.danger : colors.border,
-            backgroundColor: t.isCompleted ? colors.accent : 'transparent',
-          },
-        ]}>
-        {t.isCompleted ? <Check size={15} color={colors.onAccent} /> : null}
-      </Pressable>
+        accessibilityLabel={t.isCompleted ? `Mark ${t.title} as not done` : `Mark ${t.title} as done`}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${t.title}${due ? `, ${due}` : ''}${overdue ? ', overdue' : ''}`}
@@ -74,25 +72,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
+    minHeight: TOUCH_TARGET + 8,
+  },
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     marginBottom: SPACING.sm,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+  compact: {
+    paddingVertical: SPACING.xs,
   },
   body: {
     flex: 1,
+    justifyContent: 'center',
+    minHeight: TOUCH_TARGET,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPE.subheading,
   },
   done: {
     textDecorationLine: 'line-through',
@@ -104,6 +102,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   due: {
-    fontSize: 12.5,
+    ...TYPE.caption,
   },
 });

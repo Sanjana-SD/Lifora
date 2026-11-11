@@ -51,13 +51,13 @@ export function MonthGrid({ month, selected, onSelect, markers, today = new Date
                 <View
                   style={[
                     styles.dayCircle,
-                    isSelected && { backgroundColor: colors.accent },
+                    isSelected && { backgroundColor: colors.primary },
                     !isSelected && isToday && { borderColor: colors.accent, borderWidth: 1.5 },
                   ]}>
                   <Text
                     style={[
                       styles.dayText,
-                      { color: isSelected ? colors.onAccent : inMonth ? colors.text : colors.textMuted },
+                      { color: isSelected ? colors.onPrimary : isToday ? colors.accent : inMonth ? colors.text : colors.textMuted },
                       !inMonth && styles.outside,
                       isToday && styles.todayText,
                     ]}>
@@ -92,13 +92,13 @@ const styles = StyleSheet.create({
   cell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 3,
-    minHeight: 46,
+    paddingVertical: 2,
+    minHeight: 50,
   },
   dayCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.lg,
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { SPACING } from '@/constants/appConfig';
+import { SPACING, TYPE } from '@/constants/appConfig';
 import { useCurrentDate } from '@/hooks/useCurrentDate';
 import { useTheme } from '@/hooks/useTheme';
 import { formatHeaderDate, getGreeting } from '@/utils/dateUtils';
@@ -12,8 +12,10 @@ export function DashboardHeader() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.date, { color: colors.textMuted }]}>{formatHeaderDate(now)}</Text>
-      <Text style={[styles.greeting, { color: colors.text }]}>{getGreeting(now)}</Text>
+      <Text style={[styles.date, { color: colors.accent }]}>{formatHeaderDate(now)}</Text>
+      <Text style={[styles.greeting, { color: colors.text }]} accessibilityRole="header">
+        {getGreeting(now)}
+      </Text>
     </View>
   );
 }
@@ -23,14 +25,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   date: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...TYPE.overline,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...TYPE.display,
     marginTop: SPACING.xs,
   },
 });

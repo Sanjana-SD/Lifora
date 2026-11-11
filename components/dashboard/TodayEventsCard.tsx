@@ -5,7 +5,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { addEventOn, openOccurrence } from '@/components/calendar/navigation';
-import { SPACING } from '@/constants/appConfig';
+import { SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useCategoryMap, useOccurrences } from '@/hooks/useCalendar';
 import { useCurrentDate } from '@/hooks/useCurrentDate';
 import { useTheme } from '@/hooks/useTheme';
@@ -26,7 +26,9 @@ export function EventLine({ occurrence, label }: { occurrence: EventOccurrence; 
       onPress={() => openOccurrence(occurrence)}
       style={styles.line}>
       <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.time, { color: colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.time, { color: colors.textMuted }]} numberOfLines={1}>
+        {label}
+      </Text>
       <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
         {occurrence.title}
       </Text>
@@ -65,31 +67,30 @@ export function TodayEventsCard() {
 
 const styles = StyleSheet.create({
   empty: {
-    fontSize: 13,
-    lineHeight: 18,
+    ...TYPE.bodySmall,
   },
   line: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    minHeight: TOUCH_TARGET,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 4,
+    alignSelf: 'stretch',
+    marginVertical: SPACING.sm,
+    borderRadius: 2,
   },
   time: {
-    fontSize: 12.5,
-    minWidth: 64,
+    ...TYPE.label,
+    minWidth: 72,
   },
   title: {
+    ...TYPE.subheading,
     flex: 1,
-    fontSize: 13.5,
-    fontWeight: '600',
   },
   more: {
-    fontSize: 12,
+    ...TYPE.caption,
     marginTop: 2,
   },
 });

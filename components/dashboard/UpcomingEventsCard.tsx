@@ -4,6 +4,7 @@ import { CalendarClock } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 
+import { TYPE } from '@/constants/appConfig';
 import { useUpcomingEvents } from '@/hooks/useCalendar';
 import { useTheme } from '@/hooks/useTheme';
 import { formatDue } from '@/utils/dateUtils';
@@ -17,12 +18,12 @@ export function UpcomingEventsCard() {
   const { occurrences, error } = useUpcomingEvents();
   const afterToday = occurrences.filter((o) => o.start > endOfDay(new Date())).slice(0, SHOWN);
 
+  if (!error && afterToday.length === 0) return null;
+
   return (
     <DashboardSection icon={CalendarClock} title="Upcoming" onPress={() => router.push('/(tabs)/calendar' as Href)}>
       {error ? (
         <Text style={[styles.empty, { color: colors.danger }]}>{"Couldn't load events."}</Text>
-      ) : afterToday.length === 0 ? (
-        <Text style={[styles.empty, { color: colors.textMuted }]}>No upcoming events in the next 30 days.</Text>
       ) : (
         afterToday.map((o) => (
           <EventLine key={o.key} occurrence={o} label={formatDue(o.start, new Date(), false) + ' · ' + format(o.start, 'h:mm a')} />
@@ -34,7 +35,6 @@ export function UpcomingEventsCard() {
 
 const styles = StyleSheet.create({
   empty: {
-    fontSize: 13,
-    lineHeight: 18,
+    ...TYPE.bodySmall,
   },
 });

@@ -3,8 +3,6 @@ import { CheckCircle2, ListX, Plus, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { KeyboardAwareScreen } from '@/components/common/KeyboardAwareScreen';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ProgressBar } from '@/components/common/ProgressBar';
@@ -94,9 +93,7 @@ export default function ChecklistDetailsScreen() {
   const done = items.length > 0 && completed === items.length;
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAwareScreen>
       <Stack.Screen
         options={{
           title: 'Checklist',
@@ -187,7 +184,7 @@ export default function ChecklistDetailsScreen() {
         onConfirm={deleteChecklist}
         onCancel={() => setConfirmingDelete(false)}
       />
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 }
 

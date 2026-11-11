@@ -1,15 +1,17 @@
 import { Stack, router, type Href } from 'expo-router';
-import { ListChecks, Search, SearchX } from 'lucide-react-native';
+import { ListChecks, SearchX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/common/Button';
 import { Chip } from '@/components/common/Chip';
 import { EmptyState } from '@/components/common/EmptyState';
+import { SearchField } from '@/components/common/SearchField';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
 import { TaskRow } from '@/components/tasks/TaskRow';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { SPACING } from '@/constants/appConfig';
 import { useTasks } from '@/hooks/useTasks';
 import { useTheme } from '@/hooks/useTheme';
 import * as taskService from '@/services/taskService';
@@ -30,6 +32,7 @@ const openTask = (id: number) => router.push(`/tasks/task-details?id=${id}` as H
 
 export default function TasksScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { tasks, loading, error, reload } = useTasks();
   const [status, setStatus] = useState<TaskStatusFilter>('pending');
   const [sort, setSort] = useState<TaskSort>('deadline');
@@ -52,17 +55,7 @@ export default function TasksScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: 'Tasks' }} />
-      <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-        <Search size={18} color={colors.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search tasks"
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel="Search tasks"
-          style={[styles.searchInput, { color: colors.text }]}
-        />
-      </View>
+      <SearchField value={search} onChangeText={setSearch} placeholder="Search tasks" style={styles.searchBox} />
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled">
           {STATUSES.map((s) => (
@@ -92,7 +85,7 @@ export default function TasksScreen() {
         <FlatList
           data={visible}
           keyExtractor={(t) => String(t.id)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: 96 + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <TaskRow task={item} now={now} onToggle={() => toggle(item.id, item.isCompleted)} onPress={() => openTask(item.id)} />
@@ -112,7 +105,7 @@ export default function TasksScreen() {
           }
         />
       )}
-      <FloatingActionButton accessibilityLabel="Add task" onPress={() => router.push('/tasks/add-task' as Href)} />
+      <FloatingActionButton clearSystemBar accessibilityLabel="Add task" onPress={() => router.push('/tasks/add-task' as Href)} />
     </View>
   );
 }
@@ -122,20 +115,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-    minHeight: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: SPACING.sm,
   },
   filters: {
     paddingHorizontal: SPACING.lg,
@@ -148,7 +129,6 @@ const styles = StyleSheet.create({
   list: {
     flexGrow: 1,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 96,
   },
   center: {
     flex: 1,

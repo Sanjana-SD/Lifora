@@ -3,12 +3,13 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/common/Card';
-import { SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 
 interface DashboardSectionProps {
   icon: LucideIcon;
   title: string;
+  /** Opens the full screen for this section; shows "See all". */
   onPress?: () => void;
   children: React.ReactNode;
 }
@@ -18,18 +19,25 @@ export function DashboardSection({ icon: Icon, title, onPress, children }: Dashb
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.headerLeft}>
-        <Icon size={18} color={colors.accent} />
-        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <View style={[styles.iconWell, { backgroundColor: colors.accentSoft }]}>
+        <Icon size={16} color={colors.accent} />
       </View>
-      {onPress ? <ChevronRight size={18} color={colors.textMuted} /> : null}
+      <Text style={[styles.title, { color: colors.text }]} accessibilityRole="header">
+        {title}
+      </Text>
+      {onPress ? (
+        <View style={styles.seeAll}>
+          <Text style={[styles.seeAllText, { color: colors.accent }]}>See all</Text>
+          <ChevronRight size={16} color={colors.accent} />
+        </View>
+      ) : null}
     </View>
   );
 
   return (
     <Card style={styles.card}>
       {onPress ? (
-        <Pressable onPress={onPress} accessibilityRole="button" hitSlop={4}>
+        <Pressable onPress={onPress} accessibilityRole="button" accessibilityHint={`Opens ${title}`}>
           {header}
         </Pressable>
       ) : (
@@ -43,22 +51,35 @@ export function DashboardSection({ icon: Icon, title, onPress, children }: Dashb
 const styles = StyleSheet.create({
   card: {
     marginBottom: SPACING.md,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.sm,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: SPACING.sm,
+    minHeight: TOUCH_TARGET,
+  },
+  iconWell: {
+    width: 28,
+    height: 28,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 14.5,
-    fontWeight: '700',
+    ...TYPE.heading,
+    flex: 1,
+  },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  seeAllText: {
+    ...TYPE.label,
   },
   body: {
-    marginTop: SPACING.sm,
+    marginTop: SPACING.xs,
   },
 });

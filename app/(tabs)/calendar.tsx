@@ -1,11 +1,13 @@
 import { addDays, addMonths, endOfDay, format, isSameMonth, startOfDay, startOfMonth } from 'date-fns';
-import { CalendarX, ChevronLeft, ChevronRight, Repeat, Search, SearchX } from 'lucide-react-native';
+import { CalendarX, ChevronLeft, ChevronRight, Repeat, SearchX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { AgendaItem } from '@/components/calendar/AgendaItem';
 import { addEventOn, openOccurrence } from '@/components/calendar/navigation';
 import { EmptyState } from '@/components/common/EmptyState';
+import { SearchField } from '@/components/common/SearchField';
+import { SectionHeader } from '@/components/common/SectionHeader';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
 import { MonthGrid } from '@/components/common/MonthGrid';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
@@ -123,31 +125,18 @@ function MonthPane({ selected, onSelect }: { selected: Date; onSelect: (d: Date)
 }
 
 function UpcomingPane() {
-  const { colors } = useTheme();
   const [search, setSearch] = useState('');
   const searching = search.trim() !== '';
 
   return (
     <View style={styles.flex}>
-      <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-        <Search size={18} color={colors.textMuted} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search events"
-          placeholderTextColor={colors.textMuted}
-          accessibilityLabel="Search events"
-          returnKeyType="search"
-          style={[styles.searchInput, { color: colors.text }]}
-        />
-      </View>
+      <SearchField value={search} onChangeText={setSearch} placeholder="Search events" style={styles.searchBox} />
       {searching ? <SearchResults term={search} /> : <UpcomingList />}
     </View>
   );
 }
 
 function UpcomingList() {
-  const { colors } = useTheme();
   const { occurrences } = useUpcomingEvents();
   const categories = useCategoryMap('calendar');
 
@@ -168,11 +157,7 @@ function UpcomingList() {
       sections={sections}
       keyExtractor={(o) => o.key}
       contentContainerStyle={styles.list}
-      renderSectionHeader={({ section }) => (
-        <Text style={[styles.sectionHeader, { color: colors.textMuted, backgroundColor: colors.background }]}>
-          {section.title}
-        </Text>
-      )}
+      renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
       renderItem={({ item }) => (
         <AgendaItem
           occurrence={item}
@@ -273,33 +258,13 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-    minHeight: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: SPACING.sm,
   },
   list: {
     flexGrow: 1,
     paddingHorizontal: SPACING.lg,
     paddingBottom: 96,
-  },
-  sectionHeader: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.sm,
   },
   result: {
     borderWidth: 1,

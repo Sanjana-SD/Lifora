@@ -1,14 +1,15 @@
 import { router, type Href } from 'expo-router';
-import { BellPlus, CalendarPlus, FilePlus, ListPlus, WalletCards, type LucideIcon } from 'lucide-react-native';
+import { BellPlus, Calculator, CalendarPlus, FilePlus, ListPlus, type LucideIcon } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 
-interface QuickAddItem {
+interface QuickAction {
   key: string;
   label: string;
+  accessibilityLabel: string;
   icon: LucideIcon;
   href: Href;
 }
@@ -18,12 +19,13 @@ interface QuickAddItem {
 // relying on the literal union here makes typechecking depend on
 // dev-server state. These paths are verified against app/ directly
 // in tests/components/dashboard/QuickAddRow.test.tsx instead.
-const ITEMS: QuickAddItem[] = [
-  { key: 'event', label: 'Event', icon: CalendarPlus, href: '/calendar/add-event' as Href },
-  { key: 'task', label: 'Task', icon: ListPlus, href: '/tasks/add-task' as Href },
-  { key: 'reminder', label: 'Reminder', icon: BellPlus, href: '/reminders/add-reminder' as Href },
-  { key: 'expense', label: 'Expense', icon: WalletCards, href: '/finance/add-transaction' as Href },
-  { key: 'note', label: 'Note', icon: FilePlus, href: '/notes/create-note' as Href },
+// Expense joins this row when Finance ships; until then it would lead to a placeholder.
+const ITEMS: QuickAction[] = [
+  { key: 'event', label: 'Event', accessibilityLabel: 'Add Event', icon: CalendarPlus, href: '/calendar/add-event' as Href },
+  { key: 'task', label: 'Task', accessibilityLabel: 'Add Task', icon: ListPlus, href: '/tasks/add-task' as Href },
+  { key: 'reminder', label: 'Reminder', accessibilityLabel: 'Add Reminder', icon: BellPlus, href: '/reminders/add-reminder' as Href },
+  { key: 'note', label: 'Note', accessibilityLabel: 'Add Note', icon: FilePlus, href: '/notes/create-note' as Href },
+  { key: 'calculator', label: 'Calculate', accessibilityLabel: 'Open Calculator', icon: Calculator, href: '/calculator' as Href },
 ];
 
 export function QuickAddRow() {
@@ -31,17 +33,23 @@ export function QuickAddRow() {
 
   return (
     <View style={styles.row}>
-      {ITEMS.map(({ key, label, icon: Icon, href }) => (
+      {ITEMS.map(({ key, label, accessibilityLabel, icon: Icon, href }) => (
         <Pressable
           key={key}
           onPress={() => router.push(href)}
           accessibilityRole="button"
-          accessibilityLabel={`Add ${label}`}
+          accessibilityLabel={accessibilityLabel}
           style={styles.item}>
-          <View style={[styles.iconCircle, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-            <Icon size={20} color={colors.accent} />
-          </View>
-          <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
+          {({ pressed }) => (
+            <>
+              <View style={[styles.tile, { backgroundColor: pressed ? colors.accent : colors.accentSoft }]}>
+                <Icon size={22} color={pressed ? colors.surface : colors.accent} />
+              </View>
+              <Text style={[styles.label, { color: colors.text }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </>
+          )}
         </Pressable>
       ))}
     </View>
@@ -58,17 +66,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  iconCircle: {
-    width: 48,
-    height: 48,
+  tile: {
+    width: 56,
+    height: 56,
     borderRadius: RADIUS.lg,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    fontSize: 11,
-    marginTop: SPACING.xs,
-    fontWeight: '600',
+    ...TYPE.caption,
+    marginTop: SPACING.xs + 2,
   },
 });

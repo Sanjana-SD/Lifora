@@ -1,10 +1,11 @@
 import { format } from 'date-fns';
-import { AlarmClock, Check, Repeat } from 'lucide-react-native';
+import { AlarmClock, Repeat } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Checkbox } from '@/components/common/Checkbox';
 import { PriorityBadge } from '@/components/common/PriorityBadge';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 import { canSnooze, isOverdue } from '@/services/reminderService';
 import type { Reminder } from '@/types/reminder';
@@ -16,9 +17,11 @@ interface ReminderRowProps {
   onSnooze?: () => void;
   onPress: () => void;
   now?: Date;
+  /** Borderless variant for use inside a dashboard card. */
+  compact?: boolean;
 }
 
-export function ReminderRow({ reminder: r, onToggle, onSnooze, onPress, now = new Date() }: ReminderRowProps) {
+export function ReminderRow({ reminder: r, onToggle, onSnooze, onPress, now = new Date(), compact = false }: ReminderRowProps) {
   const { colors } = useTheme();
   const overdue = isOverdue(r, now);
   const snoozed = !r.isCompleted && r.snoozedUntil !== null && r.snoozedUntil > now;
@@ -29,31 +32,23 @@ export function ReminderRow({ reminder: r, onToggle, onSnooze, onPress, now = ne
   else if (overdue) when = `Overdue · ${when}`;
 
   return (
-    <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: r.isCompleted }}
+    <View
+      style={[
+        styles.row,
+        compact ? styles.compact : [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }],
+      ]}>
+      <Checkbox
+        shape="circle"
+        checked={r.isCompleted}
+        overdue={overdue}
+        onPress={onToggle}
         accessibilityLabel={
           r.isCompleted ? `Mark ${r.title} as not done` : repeating ? `Done for now: ${r.title}` : `Mark ${r.title} as done`
         }
-        onPress={onToggle}
-        hitSlop={8}
-        style={[
-          styles.checkbox,
-          {
-            borderColor: r.isCompleted ? colors.accent : overdue ? colors.danger : colors.border,
-            backgroundColor: r.isCompleted ? colors.accent : 'transparent',
-          },
-        ]}>
-        {r.isCompleted ? <Check size={15} color={colors.onAccent} /> : null}
-      </Pressable>
+      />
       <Pressable accessibilityRole="button" accessibilityLabel={`${r.title}, ${when}`} onPress={onPress} style={styles.body}>
         <Text
-          style={[
-            styles.title,
-            { color: r.isCompleted ? colors.textMuted : colors.text },
-            r.isCompleted && styles.done,
-          ]}
+          style={[styles.title, { color: r.isCompleted ? colors.textMuted : colors.text }, r.isCompleted && styles.done]}
           numberOfLines={2}>
           {r.title}
         </Text>
@@ -67,8 +62,8 @@ export function ReminderRow({ reminder: r, onToggle, onSnooze, onPress, now = ne
         ) : null}
       </Pressable>
       {onSnooze && canSnooze(r, now) ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Snooze ${r.title}`} onPress={onSnooze} hitSlop={8} style={styles.snooze}>
-          <AlarmClock size={20} color={colors.textMuted} />
+        <Pressable accessibilityRole="button" accessibilityLabel={`Snooze ${r.title}`} onPress={onSnooze} hitSlop={10} style={styles.snooze}>
+          <AlarmClock size={22} color={colors.accent} />
         </Pressable>
       ) : null}
     </View>
@@ -80,25 +75,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    borderWidth: 1,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
+    minHeight: TOUCH_TARGET + 8,
+  },
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     marginBottom: SPACING.sm,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+  compact: {
+    paddingVertical: SPACING.xs,
   },
   body: {
     flex: 1,
+    justifyContent: 'center',
+    minHeight: TOUCH_TARGET,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPE.subheading,
   },
   done: {
     textDecorationLine: 'line-through',
@@ -110,11 +105,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   when: {
-    fontSize: 12.5,
+    ...TYPE.caption,
   },
   snoozed: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...TYPE.caption,
+    fontWeight: '700',
     marginTop: 2,
   },
   snooze: {

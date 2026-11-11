@@ -1,9 +1,9 @@
 import React from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { useTheme } from '@/hooks/useTheme';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { SPACING } from '@/constants/appConfig';
 import { Button } from './Button';
+import { Dialog } from './Dialog';
 
 interface ConfirmDialogProps {
   visible: boolean;
@@ -26,62 +26,23 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  const { colors } = useTheme();
-
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
-        <View style={[styles.dialog, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          {message ? (
-            <Text style={[styles.message, { color: colors.textMuted }]}>{message}</Text>
-          ) : null}
-          <View style={styles.actions}>
-            <Button label={cancelLabel} variant="secondary" onPress={onCancel} style={styles.actionButton} />
-            <Button
-              label={confirmLabel}
-              variant={destructive ? 'danger' : 'primary'}
-              onPress={onConfirm}
-              style={styles.actionButton}
-            />
-          </View>
-        </View>
+    <Dialog visible={visible} title={title} message={message} onRequestClose={onCancel}>
+      <View style={styles.row}>
+        <Button label={cancelLabel} variant="secondary" onPress={onCancel} style={styles.action} />
+        <Button label={confirmLabel} variant={destructive ? 'danger' : 'primary'} onPress={onConfirm} style={styles.action} />
       </View>
-    </Modal>
+    </Dialog>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.xl,
-  },
-  dialog: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    padding: SPACING.lg,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  message: {
-    fontSize: 13.5,
-    marginTop: SPACING.sm,
-    lineHeight: 19,
-  },
-  actions: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: SPACING.lg,
     gap: SPACING.sm,
   },
-  actionButton: {
-    minWidth: 96,
+  action: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
   },
 });

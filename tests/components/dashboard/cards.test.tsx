@@ -40,8 +40,6 @@ jest.mock('@/services/taskService', () => ({
 
 import { router } from 'expo-router';
 
-import { CalculatorTeaserCard } from '@/components/dashboard/CalculatorTeaserCard';
-import { FinanceOverviewCard } from '@/components/dashboard/FinanceOverviewCard';
 import { RecentNotesCard } from '@/components/dashboard/RecentNotesCard';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { TasksCard } from '@/components/dashboard/TasksCard';
@@ -140,9 +138,10 @@ describe('UpcomingEventsCard', () => {
     expect(queryByText('Later today')).toBeNull();
   });
 
-  it('shows its empty state', async () => {
-    const { getByText } = await renderWithTheme(<UpcomingEventsCard />);
-    expect(getByText(/No upcoming events/)).toBeTruthy();
+  it('hides itself when nothing is coming up', async () => {
+    const { queryByText } = await renderWithTheme(<UpcomingEventsCard />);
+    expect(queryByText('Upcoming')).toBeNull();
+    expect(queryByText('See all')).toBeNull();
   });
 });
 
@@ -169,9 +168,15 @@ describe('RemindersCard', () => {
     expect(getByText('Nothing due today · 1 coming up')).toBeTruthy();
   });
 
-  it('shows its empty state and add link', async () => {
+  it('hides itself when there are no pending reminders', async () => {
+    const { queryByText } = await renderWithTheme(<RemindersCard />);
+    expect(queryByText('Reminders due')).toBeNull();
+    expect(queryByText('See all')).toBeNull();
+  });
+
+  it('keeps an add link', async () => {
+    mockReminders.list = [reminder(3, 'Renew passport', addDays(now, 5))];
     const { getByText } = await renderWithTheme(<RemindersCard />);
-    expect(getByText('No pending reminders.')).toBeTruthy();
     await fireEvent.press(getByText('Add a reminder'));
     expect(router.push).toHaveBeenCalledWith('/reminders/add-reminder');
   });
@@ -195,36 +200,17 @@ describe('TasksCard', () => {
     expect(setTaskCompleted).toHaveBeenCalledWith(1, true);
   });
 
-  it('shows its empty state and add link', async () => {
+  it('hides itself when there are no tasks', async () => {
+    const { queryByText } = await renderWithTheme(<TasksCard />);
+    expect(queryByText('Tasks')).toBeNull();
+    expect(queryByText('See all')).toBeNull();
+  });
+
+  it('keeps an add link', async () => {
+    mockTasks.list = [task(2, 'Groceries', addDays(now, 1))];
     const { getByText } = await renderWithTheme(<TasksCard />);
-    expect(getByText(/No tasks yet/)).toBeTruthy();
     await fireEvent.press(getByText('Add a task'));
     expect(router.push).toHaveBeenCalledWith('/tasks/add-task');
-  });
-});
-
-describe('FinanceOverviewCard', () => {
-  it('shows the PRD empty-state copy and three summary rows', async () => {
-    const { getByText, getAllByText } = await renderWithTheme(<FinanceOverviewCard />);
-    expect(getByText('No expenses logged yet this month.')).toBeTruthy();
-    expect(getByText('Today')).toBeTruthy();
-    expect(getByText('This Month')).toBeTruthy();
-    expect(getByText('Net Balance')).toBeTruthy();
-    expect(getAllByText('₹0').length).toBe(3);
-  });
-
-  it('navigates to the add-transaction stub', async () => {
-    const { getByText } = await renderWithTheme(<FinanceOverviewCard />);
-    await fireEvent.press(getByText('Add an expense'));
-    expect(router.push).toHaveBeenCalledWith('/finance/add-transaction');
-  });
-});
-
-describe('CalculatorTeaserCard', () => {
-  it('navigates to the calculator when tapped', async () => {
-    const { getByText } = await renderWithTheme(<CalculatorTeaserCard />);
-    await fireEvent.press(getByText('Calculator'));
-    expect(router.push).toHaveBeenCalledWith('/calculator/index');
   });
 });
 
@@ -234,12 +220,10 @@ describe('RecentNotesCard', () => {
     mockRecentNotes.error = null;
   });
 
-  it('shows its empty state and add link', async () => {
-    const { getByText } = await renderWithTheme(<RecentNotesCard />);
-    expect(getByText('Recent Notes')).toBeTruthy();
-    expect(getByText(/Your notes will show up here/)).toBeTruthy();
-    await fireEvent.press(getByText('Create a note'));
-    expect(router.push).toHaveBeenCalledWith('/notes/create-note');
+  it('hides itself when there are no notes', async () => {
+    const { queryByText } = await renderWithTheme(<RecentNotesCard />);
+    expect(queryByText('Recent Notes')).toBeNull();
+    expect(queryByText('See all')).toBeNull();
   });
 
   it('lists recent notes, using the untitled fallback, and opens them', async () => {
@@ -247,12 +231,13 @@ describe('RecentNotesCard', () => {
       { id: 7, title: 'Trip plan', body: '', isPinned: true, updatedAt: new Date().toISOString() },
       { id: 8, title: '', body: 'Call the bank', isPinned: false, updatedAt: new Date().toISOString() },
     ];
-    const { getByText, queryByText } = await renderWithTheme(<RecentNotesCard />);
+    const { getByText } = await renderWithTheme(<RecentNotesCard />);
     expect(getByText('Trip plan')).toBeTruthy();
     expect(getByText('Call the bank')).toBeTruthy();
-    expect(queryByText(/Your notes will show up here/)).toBeNull();
     await fireEvent.press(getByText('Trip plan'));
     expect(router.push).toHaveBeenCalledWith('/notes/edit-note?id=7');
+    await fireEvent.press(getByText('Create a note'));
+    expect(router.push).toHaveBeenCalledWith('/notes/create-note');
   });
 
   it('shows an error state instead of crashing when loading fails', async () => {

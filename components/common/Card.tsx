@@ -1,8 +1,9 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 
-import { useTheme } from '@/hooks/useTheme';
 import { RADIUS, SPACING } from '@/constants/appConfig';
+import { elevation } from '@/constants/elevation';
+import { useTheme } from '@/hooks/useTheme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -10,16 +11,13 @@ interface CardProps {
   testID?: string;
 }
 
+/** White card on the ivory page: a hairline edge plus a soft warm lift. */
 export function Card({ children, style, testID }: CardProps) {
   const { colors } = useTheme();
   return (
     <View
       testID={testID}
-      style={[
-        styles.base,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        style,
-      ]}>
+      style={[styles.base, { backgroundColor: colors.surface, borderColor: colors.border }, elevation(1, colors), style]}>
       {children}
     </View>
   );
@@ -28,7 +26,7 @@ export function Card({ children, style, testID }: CardProps) {
 const styles = StyleSheet.create({
   base: {
     borderRadius: RADIUS.lg,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: SPACING.lg,
   },
 });

@@ -2,10 +2,12 @@ import { Stack, router, type Href } from 'expo-router';
 import { BellRing } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, SectionList, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/common/Button';
 import { EmptyState } from '@/components/common/EmptyState';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
+import { SectionHeader } from '@/components/common/SectionHeader';
 import { DeliveryNote, NotificationPermissionBanner } from '@/components/common/NotificationPermissionBanner';
 import { ReminderRow } from '@/components/reminders/ReminderRow';
 import { SnoozeSheet } from '@/components/reminders/SnoozeSheet';
@@ -19,6 +21,7 @@ const openReminder = (id: number) => router.push(`/reminders/reminder-details?id
 
 export default function RemindersScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { reminders, loading, error, reload } = useReminders();
   const [snoozing, setSnoozing] = useState<Reminder | null>(null);
   const now = new Date();
@@ -57,17 +60,14 @@ export default function RemindersScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(r) => String(r.id)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: 96 + insets.bottom }]}
           ListHeaderComponent={<NotificationPermissionBanner />}
           renderSectionHeader={({ section }) => (
-            <Text
-              accessibilityRole="header"
-              style={[
-                styles.sectionHeader,
-                { color: section.title === 'Overdue' ? colors.danger : colors.textMuted, backgroundColor: colors.background },
-              ]}>
-              {section.title} · {section.data.length}
-            </Text>
+            <SectionHeader
+              title={section.title}
+              count={section.data.length}
+              tone={section.title === 'Overdue' ? 'danger' : 'default'}
+            />
           )}
           renderItem={({ item }) => (
             <ReminderRow
@@ -90,7 +90,9 @@ export default function RemindersScreen() {
           ListFooterComponent={reminders.length > 0 ? <DeliveryNote /> : undefined}
         />
       )}
-      <FloatingActionButton accessibilityLabel="Add reminder" onPress={() => router.push('/reminders/add-reminder' as Href)} />
+      <FloatingActionButton
+        clearSystemBar
+        accessibilityLabel="Add reminder" onPress={() => router.push('/reminders/add-reminder' as Href)} />
       <SnoozeSheet
         visible={snoozing !== null}
         title={snoozing?.title}
@@ -112,7 +114,6 @@ const styles = StyleSheet.create({
   list: {
     flexGrow: 1,
     padding: SPACING.lg,
-    paddingBottom: 96,
   },
   center: {
     flex: 1,
@@ -123,13 +124,5 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  sectionHeader: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.sm,
   },
 });

@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
+import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
-import { RADIUS, SPACING } from '@/constants/appConfig';
 
 interface InputProps extends TextInputProps {
   label?: string;
   errorMessage?: string;
 }
 
-export function Input({ label, errorMessage, style, ...rest }: InputProps) {
+export function Input({ label, errorMessage, style, onFocus, onBlur, ...rest }: InputProps) {
   const { colors } = useTheme();
-  const borderColor = errorMessage ? colors.danger : colors.border;
+  const [focused, setFocused] = useState(false);
+  const borderColor = errorMessage ? colors.danger : focused ? colors.accent : colors.borderStrong;
 
   return (
     <View style={styles.container}>
@@ -21,38 +22,49 @@ export function Input({ label, errorMessage, style, ...rest }: InputProps) {
         // The visible label is separate Text, so screen readers need it
         // passed explicitly to announce which field this is.
         accessibilityLabel={label}
+        selectionColor={colors.accent}
+        cursorColor={colors.accent}
+        onFocus={(e) => {
+          setFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          onBlur?.(e);
+        }}
         style={[
           styles.input,
-          { borderColor, color: colors.text, backgroundColor: colors.background },
+          {
+            borderColor,
+            borderWidth: focused || errorMessage ? 1.5 : 1,
+            color: colors.text,
+            backgroundColor: colors.surface,
+          },
           style,
         ]}
         {...rest}
       />
-      {errorMessage ? (
-        <Text style={[styles.error, { color: colors.danger }]}>{errorMessage}</Text>
-      ) : null}
+      {errorMessage ? <Text style={[styles.error, { color: colors.danger }]}>{errorMessage}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   label: {
-    fontSize: 12.5,
+    ...TYPE.label,
     marginBottom: SPACING.xs,
-    fontWeight: '600',
   },
   input: {
-    minHeight: 44,
-    borderWidth: 1,
+    minHeight: TOUCH_TARGET,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
-    fontSize: 15,
+    ...TYPE.body,
   },
   error: {
-    fontSize: 12,
+    ...TYPE.caption,
     marginTop: SPACING.xs,
   },
 });

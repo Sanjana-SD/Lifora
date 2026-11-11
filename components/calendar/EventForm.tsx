@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 
+import { KeyboardAwareScreen } from '@/components/common/KeyboardAwareScreen';
 import { Button } from '@/components/common/Button';
 import { DateTimeField } from '@/components/common/DateTimeField';
 import { CategoryPicker, NotificationOffsetPicker, PriorityPicker } from '@/components/common/FormPickers';
@@ -53,9 +54,7 @@ export function EventForm({ initial, submitLabel, showRecurrence = true, onSubmi
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAwareScreen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <NotificationPermissionBanner />
         <Input
@@ -101,7 +100,7 @@ export function EventForm({ initial, submitLabel, showRecurrence = true, onSubmi
         ) : null}
         <Button label={submitLabel} onPress={submit} loading={saving} style={styles.submit} />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScreen>
   );
 }
 

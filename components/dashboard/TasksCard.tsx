@@ -4,7 +4,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { TaskRow } from '@/components/tasks/TaskRow';
-import { SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TYPE } from '@/constants/appConfig';
 import { useTasks } from '@/hooks/useTasks';
 import { useTheme } from '@/hooks/useTheme';
 import { setTaskCompleted, sortTasks, summarizeTasks } from '@/services/taskService';
@@ -26,17 +26,21 @@ export function TasksCard() {
     { label: 'Done today', value: summary.completedToday, danger: false },
   ];
 
+  if (!error && tasks.length === 0) return null;
+
   return (
     <DashboardSection icon={ListChecks} title="Tasks" onPress={() => router.push('/tasks/index' as Href)}>
       {error ? (
         <Text style={[styles.empty, { color: colors.danger }]}>{"Couldn't load tasks."}</Text>
-      ) : tasks.length === 0 ? (
-        <Text style={[styles.empty, { color: colors.textMuted }]}>No tasks yet — pending and completed will show up here.</Text>
       ) : (
         <>
           <View style={styles.stats}>
             {stats.map((s) => (
-              <View key={s.label} style={styles.stat} accessible accessibilityLabel={`${s.value} ${s.label.toLowerCase()}`}>
+              <View
+                key={s.label}
+                style={[styles.stat, { backgroundColor: s.danger ? colors.dangerSurface : colors.surfaceAlt }]}
+                accessible
+                accessibilityLabel={`${s.value} ${s.label.toLowerCase()}`}>
                 <Text style={[styles.statValue, { color: s.danger ? colors.danger : colors.text }]}>{s.value}</Text>
                 <Text style={[styles.statLabel, { color: colors.textMuted }]}>{s.label}</Text>
               </View>
@@ -46,6 +50,7 @@ export function TasksCard() {
             <TaskRow
               key={t.id}
               task={t}
+              compact
               now={now}
               onToggle={async () => {
                 await setTaskCompleted(t.id, true);
@@ -63,23 +68,23 @@ export function TasksCard() {
 
 const styles = StyleSheet.create({
   empty: {
-    fontSize: 13,
-    lineHeight: 18,
+    ...TYPE.bodySmall,
   },
   stats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   stat: {
     alignItems: 'center',
     flex: 1,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...TYPE.title,
   },
   statLabel: {
-    fontSize: 11,
+    ...TYPE.caption,
   },
 });
