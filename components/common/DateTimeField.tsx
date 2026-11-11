@@ -22,6 +22,8 @@ interface DateTimeFieldProps {
   error?: string | null;
   /** Shows an "x" to clear the value (for optional fields). */
   clearable?: boolean;
+  /** One-tap day chips above the month grid; defaults to Today / Tomorrow / Next week. */
+  quickDays?: { label: string; day: Date }[];
 }
 
 const DISPLAY: Record<DateTimeMode, string> = {
@@ -49,6 +51,7 @@ export function DateTimeField({
   placeholder = 'Choose',
   error,
   clearable = false,
+  quickDays: quickDaysProp,
 }: DateTimeFieldProps) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
@@ -87,7 +90,7 @@ export function DateTimeField({
     });
 
   const today = new Date();
-  const quickDays = [
+  const quickDays = quickDaysProp ?? [
     { label: 'Today', day: today },
     { label: 'Tomorrow', day: addDays(today, 1) },
     { label: 'Next week', day: addDays(today, 7) },

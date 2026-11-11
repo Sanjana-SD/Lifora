@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { FinanceCard } from '@/components/dashboard/FinanceCard';
 import { QuickAddRow } from '@/components/dashboard/QuickAddRow';
 import { RecentNotesCard } from '@/components/dashboard/RecentNotesCard';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
@@ -12,8 +13,7 @@ import { SPACING } from '@/constants/appConfig';
 import { useTheme } from '@/hooks/useTheme';
 
 // Today first, then what's next. Cards with nothing to show hide themselves,
-// except Today's events, which anchors the day. A finance summary joins once
-// expenses can actually be recorded, never as placeholder numbers.
+// except Today's events, which anchors the day.
 export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -27,6 +27,7 @@ export default function HomeScreen() {
       <TodayEventsCard />
       <RemindersCard />
       <TasksCard />
+      <FinanceCard />
       <UpcomingEventsCard />
       <RecentNotesCard />
     </ScrollView>

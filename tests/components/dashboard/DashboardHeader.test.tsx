@@ -1,4 +1,9 @@
+import { fireEvent } from '@testing-library/react-native';
 import React from 'react';
+
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+
+import { router } from 'expo-router';
 
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { renderWithTheme } from '../../testUtils';
@@ -16,5 +21,11 @@ describe('DashboardHeader', () => {
       }
     });
     expect(matches.length).toBe(1);
+  });
+
+  it('has a Calculator shortcut', async () => {
+    const { getByLabelText } = await renderWithTheme(<DashboardHeader />);
+    await fireEvent.press(getByLabelText('Open Calculator'));
+    expect(router.push).toHaveBeenCalledWith('/calculator');
   });
 });

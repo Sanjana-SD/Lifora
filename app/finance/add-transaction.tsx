@@ -1,15 +1,33 @@
-import { WalletCards } from 'lucide-react-native';
-import React from 'react';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
 
-import { ComingSoonScreen } from '@/components/common/ComingSoonScreen';
+import { TransactionForm } from '@/components/finance/TransactionForm';
+import { createTransaction } from '@/services/financeService';
+import type { TransactionDraft } from '@/types/transaction';
 
 export default function AddTransactionScreen() {
+  const { type } = useLocalSearchParams<{ type?: string }>();
+  const [initial] = useState<TransactionDraft>(() => ({
+    type: type === 'income' ? 'income' : 'expense',
+    amount: '',
+    date: new Date(),
+    categoryId: null,
+    paymentMethod: null,
+    description: '',
+    note: '',
+  }));
+
   return (
-    <ComingSoonScreen
-      headerTitle="Add Transaction"
-      icon={WalletCards}
-      title="Expense tracking is coming soon"
-      description="Manual income and expense entry arrives in Phase 6."
-    />
+    <>
+      <Stack.Screen options={{ title: 'Add Transaction' }} />
+      <TransactionForm
+        initial={initial}
+        submitLabel="Save transaction"
+        onSubmit={async (draft) => {
+          await createTransaction(draft);
+          router.back();
+        }}
+      />
+    </>
   );
 }

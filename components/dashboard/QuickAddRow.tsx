@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { BellPlus, Calculator, CalendarPlus, FilePlus, ListPlus, type LucideIcon } from 'lucide-react-native';
+import { BellPlus, CalendarPlus, FilePlus, ListPlus, WalletCards, type LucideIcon } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -19,13 +19,13 @@ interface QuickAction {
 // relying on the literal union here makes typechecking depend on
 // dev-server state. These paths are verified against app/ directly
 // in tests/components/dashboard/QuickAddRow.test.tsx instead.
-// Expense joins this row when Finance ships; until then it would lead to a placeholder.
+// PRD 1.2 quick-add order. The Calculator shortcut lives in the Home header.
 const ITEMS: QuickAction[] = [
   { key: 'event', label: 'Event', accessibilityLabel: 'Add Event', icon: CalendarPlus, href: '/calendar/add-event' as Href },
   { key: 'task', label: 'Task', accessibilityLabel: 'Add Task', icon: ListPlus, href: '/tasks/add-task' as Href },
   { key: 'reminder', label: 'Reminder', accessibilityLabel: 'Add Reminder', icon: BellPlus, href: '/reminders/add-reminder' as Href },
+  { key: 'expense', label: 'Expense', accessibilityLabel: 'Add Expense', icon: WalletCards, href: '/finance/add-transaction?type=expense' as Href },
   { key: 'note', label: 'Note', accessibilityLabel: 'Add Note', icon: FilePlus, href: '/notes/create-note' as Href },
-  { key: 'calculator', label: 'Calculate', accessibilityLabel: 'Open Calculator', icon: Calculator, href: '/calculator' as Href },
 ];
 
 export function QuickAddRow() {

@@ -2,7 +2,7 @@
 // migration, as each module's phase introduces them (see
 // Lifora_Complete_PRD.md, Section 8 and Section 14).
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export const CREATE_CATEGORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -153,4 +153,44 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_status_deadline ON tasks(is_completed, deadline_at);
+`;
+
+// Phase 6 (PRD Section 8.3). import_history is created now, ahead of CSV
+// import (Phase 7), because transactions references it and SQLite can't
+// add a foreign key to an existing table without rebuilding it.
+export const CREATE_IMPORT_HISTORY_TABLE = `
+CREATE TABLE IF NOT EXISTS import_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  file_name TEXT NOT NULL,
+  detected_format_label TEXT,
+  imported_count INTEGER NOT NULL DEFAULT 0,
+  skipped_count INTEGER NOT NULL DEFAULT 0,
+  column_mapping_json TEXT,
+  imported_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+`;
+
+// Amounts are integer paise (PRD 4.H); occurred_on is a local calendar
+// date, 'YYYY-MM-DD', so day and month grouping never shifts with timezone.
+export const CREATE_TRANSACTIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  amount_paise INTEGER NOT NULL CHECK (amount_paise > 0),
+  occurred_on TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  payment_method TEXT NOT NULL CHECK (payment_method IN
+    ('google_pay', 'phonepe', 'paytm', 'bank_transfer', 'cash', 'card', 'other')),
+  source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'import')),
+  import_history_id INTEGER REFERENCES import_history(id) ON DELETE SET NULL,
+  external_reference TEXT,
+  is_duplicate_reviewed INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(occurred_on);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_import ON transactions(import_history_id);
 `;

@@ -15,7 +15,16 @@ const mockCalendar = { today: [] as unknown[], upcoming: [] as unknown[] };
 jest.mock('@/hooks/useCalendar', () => ({
   useOccurrences: () => ({ occurrences: mockCalendar.today, error: null }),
   useUpcomingEvents: () => ({ occurrences: mockCalendar.upcoming, error: null }),
-  useCategoryMap: () => new Map(),
+  useCategoryMap: () =>
+    new Map([
+      [1, { id: 1, name: 'Food' }],
+      [2, { id: 2, name: 'Transportation' }],
+    ]),
+}));
+
+const mockFinance = { summary: null as unknown, error: null as Error | null };
+jest.mock('@/hooks/useFinance', () => ({
+  useFinanceHomeSummary: () => mockFinance,
 }));
 
 const mockReminders = { list: [] as unknown[], reload: jest.fn() };
@@ -40,6 +49,7 @@ jest.mock('@/services/taskService', () => ({
 
 import { router } from 'expo-router';
 
+import { FinanceCard } from '@/components/dashboard/FinanceCard';
 import { RecentNotesCard } from '@/components/dashboard/RecentNotesCard';
 import { RemindersCard } from '@/components/dashboard/RemindersCard';
 import { TasksCard } from '@/components/dashboard/TasksCard';
@@ -244,5 +254,53 @@ describe('RecentNotesCard', () => {
     mockRecentNotes.error = new Error('db locked');
     const { getByText } = await renderWithTheme(<RecentNotesCard />);
     expect(getByText("Couldn't load notes.")).toBeTruthy();
+  });
+});
+
+describe('FinanceCard', () => {
+  beforeEach(() => {
+    mockFinance.summary = null;
+    mockFinance.error = null;
+  });
+
+  it('hides itself until the first transaction exists (no placeholder ₹0)', async () => {
+    mockFinance.summary = { hasAnyTransactions: false, spentTodayPaise: 0, todayByCategory: [], monthExpensePaise: 0, monthIncomePaise: 0 };
+    const { queryByText } = await renderWithTheme(<FinanceCard />);
+    expect(queryByText("Today's spending")).toBeNull();
+    expect(queryByText(/₹0/)).toBeNull();
+  });
+
+  it("shows today's spending with a category breakdown, and this month's totals", async () => {
+    mockFinance.summary = {
+      hasAnyTransactions: true,
+      spentTodayPaise: 35000,
+      todayByCategory: [
+        { categoryId: 1, totalPaise: 20000, count: 2 },
+        { categoryId: 2, totalPaise: 15000, count: 1 },
+      ],
+      monthExpensePaise: 1234500,
+      monthIncomePaise: 5000000,
+    };
+    const { getByText, getByLabelText } = await renderWithTheme(<FinanceCard />);
+    expect(getByText('₹350')).toBeTruthy();
+    expect(getByText('Food ₹200 · Transportation ₹150')).toBeTruthy();
+    expect(getByLabelText('Spent this month: ₹12,345.00')).toBeTruthy();
+    expect(getByLabelText('Income this month: ₹50,000.00')).toBeTruthy();
+    await fireEvent.press(getByText('Add an expense'));
+    expect(router.push).toHaveBeenCalledWith('/finance/add-transaction?type=expense');
+    await fireEvent.press(getByText("Today's spending"));
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/finance');
+  });
+
+  it('says when nothing has been spent today', async () => {
+    mockFinance.summary = { hasAnyTransactions: true, spentTodayPaise: 0, todayByCategory: [], monthExpensePaise: 50000, monthIncomePaise: 0 };
+    const { getByText } = await renderWithTheme(<FinanceCard />);
+    expect(getByText('Nothing spent yet today.')).toBeTruthy();
+  });
+
+  it('shows an error state instead of hiding a failure', async () => {
+    mockFinance.error = new Error('db locked');
+    const { getByText } = await renderWithTheme(<FinanceCard />);
+    expect(getByText("Couldn't load your finances.")).toBeTruthy();
   });
 });

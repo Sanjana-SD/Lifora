@@ -1,10 +1,11 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TYPE } from '@/constants/appConfig';
 import { PRIORITIES, PRIORITY_LABELS, type Priority } from '@/constants/priorities';
 import { useCategories } from '@/hooks/useCalendar';
 import { useTheme } from '@/hooks/useTheme';
+import type { CategoryScope } from '@/types/category';
 import { Chip } from './Chip';
 import { SegmentedControl } from './SegmentedControl';
 
@@ -24,16 +25,27 @@ export function PriorityPicker({ value, onChange }: { value: Priority; onChange:
   );
 }
 
-/** Calendar-scope categories (shared by events, reminders, and tasks), with their colors. */
-export function CategoryPicker({ value, onChange }: { value: number | null; onChange: (id: number | null) => void }) {
+interface CategoryPickerProps {
+  value: number | null;
+  onChange: (id: number | null) => void;
+  /** Calendar categories are shared by events, reminders, and tasks; finance has its own set. */
+  scope?: CategoryScope;
+  /** Offer a "None" chip (calendar items); finance requires a category. */
+  allowNone?: boolean;
+  /** Shown under the label, e.g. "Suggested from the description". */
+  hint?: string | null;
+}
+
+export function CategoryPicker({ value, onChange, scope = 'calendar', allowNone = true, hint }: CategoryPickerProps) {
   const { colors } = useTheme();
-  const { categories } = useCategories('calendar');
+  const { categories } = useCategories(scope);
 
   return (
     <View style={styles.block}>
       <FieldLabel>Category</FieldLabel>
+      {hint ? <Text style={[styles.hint, { color: colors.accent }]}>{hint}</Text> : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Chip label="None" selected={value === null} onPress={() => onChange(null)} />
+        {allowNone ? <Chip label="None" selected={value === null} onPress={() => onChange(null)} /> : null}
         {categories.map((c) => {
           const selected = value === c.id;
           return (
@@ -43,15 +55,18 @@ export function CategoryPicker({ value, onChange }: { value: number | null; onCh
               accessibilityState={{ selected }}
               accessibilityLabel={`Category: ${c.name}`}
               onPress={() => onChange(c.id)}
+              hitSlop={{ top: 6, bottom: 6 }}
               style={[
                 styles.categoryChip,
                 {
-                  backgroundColor: selected ? colors.surfaceAlt : colors.surface,
-                  borderColor: selected ? c.colorHex : colors.border,
+                  backgroundColor: selected ? colors.accentSoft : colors.surface,
+                  borderColor: selected ? colors.accent : colors.border,
                 },
               ]}>
               <View style={[styles.dot, { backgroundColor: c.colorHex }]} />
-              <Text style={[styles.categoryText, { color: colors.text, fontWeight: selected ? '700' : '600' }]}>{c.name}</Text>
+              <Text style={[styles.categoryText, { color: selected ? colors.accent : colors.text, fontWeight: selected ? '700' : '600' }]}>
+                {c.name}
+              </Text>
             </Pressable>
           );
         })}
@@ -92,26 +107,30 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   label: {
-    fontSize: 12.5,
-    fontWeight: '600',
+    ...TYPE.label,
+    marginBottom: SPACING.xs,
+  },
+  hint: {
+    ...TYPE.caption,
+    marginTop: -2,
     marginBottom: SPACING.xs,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    minHeight: 32,
+    height: 36,
     paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
     marginRight: SPACING.sm,
   },
   dot: {
-    width: 9,
-    height: 9,
+    width: 10,
+    height: 10,
     borderRadius: 5,
   },
   categoryText: {
-    fontSize: 13,
+    ...TYPE.label,
   },
 });

@@ -15,20 +15,19 @@ describe('QuickAddRow', () => {
     (router.push as jest.Mock).mockClear();
   });
 
-  it('renders the five quick actions, with no action leading to an unbuilt screen', async () => {
-    const { getByText, queryByText } = await renderWithTheme(<QuickAddRow />);
-    for (const label of ['Event', 'Task', 'Reminder', 'Note', 'Calculate']) {
+  it('renders the five PRD quick-add actions', async () => {
+    const { getByText } = await renderWithTheme(<QuickAddRow />);
+    for (const label of ['Event', 'Task', 'Reminder', 'Expense', 'Note']) {
       expect(getByText(label)).toBeTruthy();
     }
-    expect(queryByText('Expense')).toBeNull();
   });
 
   it.each([
     ['Add Event', '/calendar/add-event'],
     ['Add Task', '/tasks/add-task'],
     ['Add Reminder', '/reminders/add-reminder'],
+    ['Add Expense', '/finance/add-transaction?type=expense'],
     ['Add Note', '/notes/create-note'],
-    ['Open Calculator', '/calculator'],
   ])('%s navigates to %s', async (label, href) => {
     const { getByLabelText } = await renderWithTheme(<QuickAddRow />);
     await fireEvent.press(getByLabelText(label));
@@ -37,6 +36,7 @@ describe('QuickAddRow', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { existsSync } = require('node:fs');
     const appDir = `${process.cwd()}/app`;
-    expect(existsSync(`${appDir}${href}.tsx`) || existsSync(`${appDir}${href}/index.tsx`)).toBe(true);
+    const route = href.split('?')[0];
+    expect(existsSync(`${appDir}${route}.tsx`) || existsSync(`${appDir}${route}/index.tsx`)).toBe(true);
   });
 });
