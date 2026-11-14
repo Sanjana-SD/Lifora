@@ -39,6 +39,12 @@ export interface ThemeColors {
   tabBarInactive: string;
   /** Dim layer behind sheets and dialogs. */
   scrim: string;
+  /**
+   * Money-out / money-in chart fills. Validated as a colour-blind-safe pair
+   * (they differ in lightness as well as hue); never used for text.
+   */
+  chartOut: string;
+  chartIn: string;
   shadow: string;
 }
 
@@ -64,6 +70,8 @@ export const LightColors: ThemeColors = {
   tabBarBackground: '#FFFFFF',
   tabBarInactive: '#77716F',
   scrim: 'rgba(41, 35, 35, 0.45)',
+  chartOut: '#8E2944',
+  chartIn: '#66BB8A',
   shadow: '#5C0017',
 };
 
@@ -89,6 +97,8 @@ export const DarkColors: ThemeColors = {
   tabBarBackground: '#1B1517',
   tabBarInactive: '#A0938F',
   scrim: 'rgba(0, 0, 0, 0.6)',
+  chartOut: '#D36D86',
+  chartIn: '#227848',
   shadow: '#000000',
 };
 

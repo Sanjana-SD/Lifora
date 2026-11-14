@@ -11,30 +11,37 @@ jest.mock('@/database/database', () => ({
 import { listCategoriesByScope } from '@/database/repositories/categoryRepository';
 import { CURRENT_SCHEMA_VERSION } from '@/database/schema';
 import * as finance from '@/services/financeService';
-import type { TransactionDraft } from '@/types/transaction';
+import type { Category } from '@/types/category';
+import { parseStatementText } from '@/utils/statementParser';
 
+let categories: Category[];
 let categoryId: Record<string, number>;
 const now = new Date();
-const key = (d: Date) => format(d, 'yyyy-MM-dd');
+const d = (offset: number) => format(addDays(now, offset), 'dd/MM/yyyy');
+const key = (offset: number) => format(addDays(now, offset), 'yyyy-MM-dd');
 
-const draft = (overrides: Partial<TransactionDraft> = {}): TransactionDraft => ({
-  type: 'expense',
-  amount: '100',
-  date: now,
-  categoryId: categoryId.Food,
-  paymentMethod: 'cash',
-  description: '',
-  note: '',
-  ...overrides,
-});
+/** A statement in HDFC's layout, dated relative to today. */
+const statement = () => `HDFC BANK Ltd.
+Opening Balance 50,000.00
+${d(-3)} UPI-SWIGGY-swiggy@yesb-YESB0000001-430500000001-Dinner 450.00 49,550.00
+${d(-2)} NEFT-ICIC0001234-ACME SALARY NOVEMBER 85,000.00 1,34,550.00
+${d(-1)} UPI-UBER INDIA-uber@hdfcbank-HDFC0000001-430500000002-Ride 220.50 1,34,329.50
+${d(0)} UPI-ZOMATO-zomato@hdfc-HDFC0000002-430500000003-Lunch 99.99 1,34,229.51
+${d(0)} UPI-ZOMATO-zomato@hdfc-HDFC0000002-430500000004-Snack 0.01 1,34,229.50`;
+
+async function importText(text: string, fileName = 'statement.pdf') {
+  const parsed = parseStatementText(text, now);
+  const candidates = await finance.prepareImport(parsed, categories);
+  return { parsed, candidates, result: await finance.commitImport({ fileName, bankName: parsed.bankName, candidates }) };
+}
 
 beforeEach(async () => {
   mockDb = await createTestDatabase();
-  const categories = await listCategoriesByScope('finance');
+  categories = await listCategoriesByScope('finance');
   categoryId = Object.fromEntries(categories.map((c) => [c.name, c.id]));
 });
 
-describe('finance (integration)', () => {
+describe('finance import (integration)', () => {
   it('migrates to the current schema with transactions and import_history tables', async () => {
     const version = await mockDb.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(CURRENT_SCHEMA_VERSION);
@@ -42,123 +49,139 @@ describe('finance (integration)', () => {
     expect(tables.map((t) => t.name)).toEqual(expect.arrayContaining(['transactions', 'import_history']));
   });
 
-  it('stores amounts as integer paise and sums them exactly (PRD 4.1: ₹99.99 + ₹0.01 = ₹100.00)', async () => {
-    await finance.createTransaction(draft({ amount: '99.99' }));
-    await finance.createTransaction(draft({ amount: '0.01' }));
-    const raw = await mockDb.getAllAsync<{ amount_paise: number }>('SELECT amount_paise FROM transactions ORDER BY id');
-    expect(raw.map((r) => r.amount_paise)).toEqual([9999, 1]);
+  it('imports a statement: payees, categories, references, and an import record', async () => {
+    const { result } = await importText(statement());
+    expect(result.imported).toBe(5);
+
+    const saved = await finance.listTransactions();
+    const swiggy = saved.find((t) => t.description === 'Swiggy')!;
+    expect(swiggy).toMatchObject({
+      type: 'expense',
+      amountPaise: 45000,
+      occurredOn: key(-3),
+      categoryId: categoryId.Food,
+      paymentMethod: 'bank_transfer',
+      source: 'import',
+      externalReference: '430500000001',
+      importHistoryId: result.importId,
+    });
+    expect(swiggy.note).toContain('UPI-SWIGGY');
+    expect(saved.find((t) => t.amountPaise === 8500000)).toMatchObject({ type: 'income', categoryId: categoryId.Salary });
+
+    const last = await finance.getLastImport();
+    expect(last).toMatchObject({ fileName: 'statement.pdf', bankName: 'HDFC Bank', importedCount: 5, skippedCount: 0 });
+  });
+
+  it('sums imported paise exactly (PRD 4.1: ₹99.99 + ₹0.01 = ₹100.00)', async () => {
+    await importText(statement());
     const dash = await finance.getDashboard(now, now);
-    expect(dash.expensePaise).toBe(10000);
     expect(dash.spentTodayPaise).toBe(10000);
   });
 
-  it('creates, reads, updates and deletes a transaction', async () => {
-    const id = await finance.createTransaction(
-      draft({ amount: '149.50', description: '  Lunch  ', note: 'with team', paymentMethod: 'google_pay' }),
+  it('flags a re-imported statement as duplicates, unchecked by default (PRD 4.C.3)', async () => {
+    await importText(statement());
+    const again = await finance.prepareImport(parseStatementText(statement(), now), categories);
+    expect(again.every((c) => c.duplicate && !c.selected)).toBe(true);
+    await expect(finance.commitImport({ fileName: 'again.pdf', bankName: null, candidates: again })).rejects.toThrow(
+      'Choose at least one transaction to import.',
     );
-    let t = await finance.getTransaction(id);
-    expect(t).toMatchObject({ type: 'expense', amountPaise: 14950, description: 'Lunch', note: 'with team', paymentMethod: 'google_pay', occurredOn: key(now) });
-
-    await finance.updateTransaction(id, draft({ type: 'income', amount: '2000', categoryId: categoryId.Salary, paymentMethod: 'bank_transfer' }));
-    t = await finance.getTransaction(id);
-    expect(t).toMatchObject({ type: 'income', amountPaise: 200000, categoryId: categoryId.Salary });
-
-    await finance.deleteTransaction(id);
-    expect(await finance.getTransaction(id)).toBeNull();
+    expect(await finance.listTransactions()).toHaveLength(5);
   });
 
-  it.each([
-    [{ amount: '' }, 'Enter an amount.'],
-    [{ amount: '0' }, 'Amount must be more than zero.'],
-    [{ categoryId: null }, 'Choose a category.'],
-    [{ paymentMethod: null }, 'Choose how it was paid.'],
-    [{ type: 'income' as const, paymentMethod: null }, 'Choose how it was received.'],
-    [{ description: 'x'.repeat(201) }, 'Description must be 200 characters or fewer.'],
-    [{ note: 'x'.repeat(501) }, 'Note must be 500 characters or fewer.'],
-  ])('rejects %p', async (overrides, message) => {
-    await expect(finance.createTransaction(draft(overrides))).rejects.toThrow(message);
+  it('still lets the user import a suspected duplicate deliberately', async () => {
+    await importText(statement());
+    const again = await finance.prepareImport(parseStatementText(statement(), now), categories);
+    again[0].selected = true;
+    await finance.commitImport({ fileName: 'again.pdf', bankName: null, candidates: again });
+    const rows = await mockDb.getAllAsync<{ n: number }>('SELECT COUNT(*) AS n FROM transactions WHERE is_duplicate_reviewed = 0');
+    expect(rows[0].n).toBe(1);
+  });
+
+  it('never imports a row whose direction is unknown until the user decides', async () => {
+    const text = `Some Bank\n${d(-1)} Misc entry 500.00 9,500.00`;
+    const parsed = parseStatementText(text, now);
+    const candidates = await finance.prepareImport(parsed, categories);
+    expect(candidates[0]).toMatchObject({ type: null, selected: false });
+    expect(finance.canImport(candidates[0])).toBe(false);
+    candidates[0].selected = true;
+    await expect(finance.commitImport({ fileName: 'x.pdf', bankName: null, candidates })).rejects.toThrow();
+    candidates[0].type = 'expense';
+    await expect(finance.commitImport({ fileName: 'x.pdf', bankName: null, candidates })).resolves.toMatchObject({ imported: 1 });
+  });
+
+  it('writes an import all-or-nothing', async () => {
+    const parsed = parseStatementText(statement(), now);
+    const candidates = await finance.prepareImport(parsed, categories);
+    candidates[2].categoryId = 999999; // violates the category foreign key
+    await expect(finance.commitImport({ fileName: 'bad.pdf', bankName: null, candidates })).rejects.toThrow();
     expect(await finance.listTransactions()).toHaveLength(0);
+    expect(await finance.getLastImport()).toBeNull();
   });
 
-  it('allows dates up to tomorrow but not later (PRD 4.B)', async () => {
-    await expect(finance.createTransaction(draft({ date: addDays(now, 1) }))).resolves.toBeGreaterThan(0);
-    await expect(finance.createTransaction(draft({ date: addDays(now, 2) }))).rejects.toThrow(/more than a day ahead/);
-    await expect(finance.createTransaction(draft({ date: subMonths(now, 14) }))).resolves.toBeGreaterThan(0);
+  it('lets the user correct direction, category and payee after import', async () => {
+    await importText(statement());
+    const uber = (await finance.listTransactions({ search: 'uber' }))[0];
+    await finance.updateTransactionDetails(uber.id, { type: 'income', categoryId: categoryId.Travel, description: '  Uber refund ' });
+    expect(await finance.getTransaction(uber.id)).toMatchObject({ type: 'income', categoryId: categoryId.Travel, description: 'Uber refund' });
+    await expect(finance.updateTransactionDetails(uber.id, { type: 'income', categoryId: null, description: ' ' })).rejects.toThrow(
+      "Payee name can't be empty.",
+    );
+    await finance.deleteTransaction(uber.id);
+    expect(await finance.getTransaction(uber.id)).toBeNull();
   });
 
-  it('filters history by search, type, category, payment method and date range, newest first', async () => {
-    await finance.createTransaction(draft({ description: 'Swiggy dinner', amount: '450', date: addDays(now, -1) }));
-    await finance.createTransaction(draft({ description: 'Uber', amount: '220', categoryId: categoryId.Transportation, paymentMethod: 'paytm' }));
-    await finance.createTransaction(draft({ type: 'income', description: 'Salary', amount: '50000', categoryId: categoryId.Salary, paymentMethod: 'bank_transfer', date: subMonths(now, 2) }));
-    await finance.createTransaction(draft({ description: '50% off sale', note: 'shoes', categoryId: categoryId.Shopping }));
-
-    const titles = async (f: Parameters<typeof finance.listTransactions>[0]) =>
+  it('filters history by search, type, category and date range', async () => {
+    await importText(statement());
+    const names = async (f: Parameters<typeof finance.listTransactions>[0]) =>
       (await finance.listTransactions(f)).map((t) => t.description);
-
-    expect(await titles({})).toEqual(['50% off sale', 'Uber', 'Swiggy dinner', 'Salary']);
-    expect(await titles({ search: 'swig' })).toEqual(['Swiggy dinner']);
-    expect(await titles({ search: 'SHOES' })).toEqual(['50% off sale']);
-    expect(await titles({ search: '50%' })).toEqual(['50% off sale']);
-    expect(await titles({ search: '%' })).toEqual(['50% off sale']);
-    expect(await titles({ type: 'income' })).toEqual(['Salary']);
-    expect(await titles({ categoryId: categoryId.Transportation })).toEqual(['Uber']);
-    expect(await titles({ paymentMethod: 'paytm' })).toEqual(['Uber']);
-    expect(await titles({ ...finance.rangeForPreset('this_month', now) })).not.toContain('Salary');
+    expect(await names({ search: 'swig' })).toEqual(['Swiggy']);
+    expect(await names({ search: 'Dinner' })).toEqual(['Swiggy']); // matches the bank narration too
+    expect(await names({ type: 'income' })).toEqual(['Acme Salary November']);
+    expect(await names({ categoryId: categoryId.Food })).toHaveLength(3);
+    expect(await names({ from: key(0), to: key(0) })).toEqual(['Zomato', 'Zomato']);
   });
 
-  it('builds the dashboard from live data: period totals, category breakdown, 6-month trend, recent', async () => {
-    await finance.createTransaction(draft({ amount: '300', categoryId: categoryId.Food }));
-    await finance.createTransaction(draft({ amount: '200', categoryId: categoryId.Food }));
-    await finance.createTransaction(draft({ amount: '1000', categoryId: categoryId.Rent }));
-    await finance.createTransaction(draft({ type: 'income', amount: '5000', categoryId: categoryId.Salary, paymentMethod: 'bank_transfer' }));
-    await finance.createTransaction(draft({ amount: '700', date: subMonths(now, 2) }));
-    await finance.createTransaction(draft({ amount: '999', date: subMonths(now, 7) }));
+  it('builds the dashboard from live data: totals, categories, payees, daily and monthly series', async () => {
+    await importText(statement());
+    const dash = await finance.getDashboard(now, now);
+    const inMonth = (offset: number) => addDays(now, offset).getMonth() === now.getMonth();
+    expect(dash.hasAnyTransactions).toBe(true);
+    expect(dash.lastImport?.importedCount).toBe(5);
+    if ([-3, -2, -1].every(inMonth)) {
+      expect(dash.incomePaise).toBe(8500000);
+      expect(dash.expensePaise).toBe(45000 + 22050 + 10000);
+      expect(dash.netPaise).toBe(8500000 - 77050);
+      expect(dash.topPayees[0]).toEqual({ name: 'Swiggy', totalPaise: 45000, count: 1 });
+      expect(dash.topPayees.find((p) => p.name === 'Zomato')).toEqual({ name: 'Zomato', totalPaise: 10000, count: 2 });
+    }
+    expect(dash.daily).toHaveLength(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
+    expect(dash.daily.find((x) => x.date === key(0))?.expensePaise).toBe(10000);
+    expect(dash.trend).toHaveLength(finance.TREND_MONTHS);
+    expect(dash.trend[5].month).toBe(finance.toMonthKey(now));
+    expect(dash.recent).toHaveLength(5);
 
-    const d = await finance.getDashboard(now, now);
-    expect(d.hasAnyTransactions).toBe(true);
-    expect(d.incomePaise).toBe(500000);
-    expect(d.expensePaise).toBe(150000);
-    expect(d.netPaise).toBe(350000);
-    expect(d.expenseByCategory).toEqual([
-      { categoryId: categoryId.Rent, totalPaise: 100000, count: 1 },
-      { categoryId: categoryId.Food, totalPaise: 50000, count: 2 },
-    ]);
-    expect(d.trend).toHaveLength(finance.TREND_MONTHS);
-    expect(d.trend[5]).toEqual({ month: finance.toMonthKey(now), incomePaise: 500000, expensePaise: 150000 });
-    expect(d.trend[3]).toEqual({ month: finance.toMonthKey(subMonths(now, 2)), incomePaise: 0, expensePaise: 70000 });
-    expect(d.trend.map((m) => m.expensePaise)).not.toContain(99900); // 7 months ago is outside the window
-    expect(d.recent).toHaveLength(5);
-
-    const earlier = await finance.getDashboard(subMonths(now, 2), now);
-    expect(earlier.expensePaise).toBe(70000);
-    expect(earlier.spentTodayPaise).toBe(150000); // "today" tiles ignore the selected month
+    const earlier = await finance.getDashboard(subMonths(now, 3), now);
+    expect(earlier.expensePaise).toBe(0);
+    expect(earlier.spentTodayPaise).toBe(10000); // "today" tiles ignore the selected month
   });
 
   it('reports an empty dashboard honestly', async () => {
-    const d = await finance.getDashboard(now, now);
-    expect(d).toMatchObject({ hasAnyTransactions: false, incomePaise: 0, expensePaise: 0, netPaise: 0, expenseByCategory: [], recent: [] });
-    expect(d.trend.every((m) => m.expensePaise === 0 && m.incomePaise === 0)).toBe(true);
+    const dash = await finance.getDashboard(now, now);
+    expect(dash).toMatchObject({ hasAnyTransactions: false, lastImport: null, incomePaise: 0, expensePaise: 0, recent: [], topPayees: [] });
   });
 
   it("summarises today's spending by category for Home", async () => {
-    await finance.createTransaction(draft({ amount: '120', categoryId: categoryId.Food }));
-    await finance.createTransaction(draft({ amount: '80', categoryId: categoryId.Transportation }));
-    await finance.createTransaction(draft({ amount: '500', date: addDays(now, -40) }));
+    await importText(statement());
     const s = await finance.getHomeSummary(now);
-    expect(s.spentTodayPaise).toBe(20000);
-    expect(s.todayByCategory.map((c) => c.categoryId)).toEqual([categoryId.Food, categoryId.Transportation]);
+    expect(s.spentTodayPaise).toBe(10000);
+    expect(s.todayByCategory.map((c) => c.categoryId)).toEqual([categoryId.Food]);
+    expect(s.lastImport?.fileName).toBe('statement.pdf');
   });
 
   it('keeps transactions when their category is deleted', async () => {
-    const id = await finance.createTransaction(draft({ categoryId: categoryId.Food }));
+    await importText(statement());
     await mockDb.runAsync('DELETE FROM categories WHERE id = ?', [categoryId.Food]);
-    expect((await finance.getTransaction(id))?.categoryId).toBeNull();
-  });
-
-  it('suggests a category id from the description', async () => {
-    const categories = await listCategoriesByScope('finance');
-    expect(finance.suggestCategoryId('zomato', 'expense', categories)).toBe(categoryId.Food);
-    expect(finance.suggestCategoryId('random', 'expense', categories)).toBeNull();
+    expect((await finance.listTransactions({ search: 'swiggy' }))[0].categoryId).toBeNull();
   });
 
   it('groups history into day sections with each day’s net', () => {
@@ -169,5 +192,10 @@ describe('finance (integration)', () => {
       ['2026-11-11', 1500, 2],
       ['2026-11-10', -100, 1],
     ]);
+  });
+
+  it('matches narrations across downloads despite spacing differences', () => {
+    expect(finance.similarNarration('UPI-SWIGGY-swiggy@yesb-Dinner', 'UPI - SWIGGY - swiggy@yesb - Dinner')).toBe(true);
+    expect(finance.similarNarration('UPI-SWIGGY-Dinner', 'NEFT-ACME-Salary')).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react-native';
+import { Plus, type LucideIcon } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,10 +15,12 @@ interface FloatingActionButtonProps {
    * button must clear Android's gesture/navigation bar itself.
    */
   clearSystemBar?: boolean;
+  /** Defaults to a plus sign. */
+  icon?: LucideIcon;
 }
 
 /** Bottom-right primary action, in easy reach of the right thumb. */
-export function FloatingActionButton({ accessibilityLabel, onPress, clearSystemBar = false }: FloatingActionButtonProps) {
+export function FloatingActionButton({ accessibilityLabel, onPress, clearSystemBar = false, icon: Icon = Plus }: FloatingActionButtonProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -33,7 +35,7 @@ export function FloatingActionButton({ accessibilityLabel, onPress, clearSystemB
         clearSystemBar && { bottom: SPACING.lg + insets.bottom },
         elevation(2, colors),
       ]}>
-      <Plus size={28} color={colors.onPrimary} />
+      <Icon size={26} color={colors.onPrimary} />
     </Pressable>
   );
 }

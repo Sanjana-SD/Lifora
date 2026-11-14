@@ -13,30 +13,55 @@ export interface Transaction {
   categoryId: number | null;
   paymentMethod: PaymentMethod;
   source: 'manual' | 'import';
+  /** UPI/UTR/cheque reference from the statement. */
+  externalReference: string | null;
+  importHistoryId: number | null;
   createdAt: string;
 }
 
-/** What the add/edit form produces; the service validates and converts it. */
-export interface TransactionDraft {
-  type: TransactionType;
-  /** As typed, e.g. "149.50"; converted to paise on save. */
-  amount: string;
-  date: Date;
-  categoryId: number | null;
-  paymentMethod: PaymentMethod | null;
-  description: string;
-  note: string;
-}
-
-/** A validated row, ready for the database. */
+/** A row ready for the database, built from a reviewed statement line. */
 export interface TransactionRecord {
   type: TransactionType;
   amountPaise: number;
   occurredOn: string;
-  categoryId: number;
+  categoryId: number | null;
   paymentMethod: PaymentMethod;
+  /** The payee or payer, cleaned for display ("Swiggy"). */
   description: string;
+  /** The bank's original narration. */
   note: string;
+  externalReference: string | null;
+  /** False only for suspected duplicates the user chose to import anyway. */
+  isDuplicateReviewed: boolean;
+}
+
+/** What can be corrected after import. */
+export interface TransactionEdit {
+  type: TransactionType;
+  categoryId: number | null;
+  description: string;
+}
+
+export interface ImportSummary {
+  id: number;
+  fileName: string;
+  bankName: string | null;
+  importedCount: number;
+  skippedCount: number;
+  importedAt: string;
+}
+
+export interface PayeeTotal {
+  name: string;
+  totalPaise: number;
+  count: number;
+}
+
+export interface DayTotal {
+  /** 'yyyy-MM-dd' */
+  date: string;
+  expensePaise: number;
+  incomePaise: number;
 }
 
 export interface TransactionFilters {

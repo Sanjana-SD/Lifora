@@ -1,5 +1,6 @@
 import { addDays, addMonths, endOfDay, format, isSameMonth, startOfDay, startOfMonth } from 'date-fns';
-import { CalendarX, ChevronLeft, ChevronRight, Repeat, SearchX } from 'lucide-react-native';
+import { Tabs, router, type Href } from 'expo-router';
+import { CalendarX, ChevronLeft, ChevronRight, Repeat, ScanText, SearchX } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 
@@ -11,7 +12,7 @@ import { SectionHeader } from '@/components/common/SectionHeader';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
 import { MonthGrid } from '@/components/common/MonthGrid';
 import { SegmentedControl } from '@/components/common/SegmentedControl';
-import { RADIUS, SPACING } from '@/constants/appConfig';
+import { RADIUS, SPACING, TYPE } from '@/constants/appConfig';
 import { useCategoryMap, useEventSearch, useOccurrences, useUpcomingEvents } from '@/hooks/useCalendar';
 import { useTheme } from '@/hooks/useTheme';
 import type { EventOccurrence, EventRecord } from '@/types/event';
@@ -31,6 +32,20 @@ export default function CalendarScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Tabs.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add dates from a photo or document"
+              onPress={() => router.push('/calendar/import-document' as Href)}
+              style={({ pressed }) => [styles.scan, { borderColor: colors.border, backgroundColor: pressed ? colors.accentSoft : colors.surface }]}>
+              <ScanText size={18} color={colors.accent} />
+              <Text style={[styles.scanText, { color: colors.accent }]}>Scan</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <View style={styles.paneSwitch}>
         <SegmentedControl options={PANES} value={pane} onChange={setPane} />
       </View>
@@ -284,5 +299,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  scan: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: SPACING.md,
+    marginRight: SPACING.md,
+    borderRadius: RADIUS.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  scanText: {
+    ...TYPE.label,
   },
 });

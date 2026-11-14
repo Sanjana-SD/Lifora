@@ -27,7 +27,8 @@ export default function AddEventScreen() {
       categoryId: null,
       priority: 'medium',
       recurrence: NO_RECURRENCE,
-      notificationOffsetMinutes: null,
+      // Events alert by default; "None" is still one tap away.
+      notificationOffsetMinutes: 10,
     };
   });
 

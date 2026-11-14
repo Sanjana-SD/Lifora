@@ -1,21 +1,35 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getPermissionState, type PermissionState } from '@/services/notificationService';
+import { getExactAlarmState, getPermissionState, type PermissionState } from '@/services/notificationService';
+
+export interface NotificationAccess {
+  notifications: PermissionState;
+  /** Android 12+: whether alerts can fire at the exact minute. */
+  exactAlarms: 'granted' | 'denied' | 'unsupported';
+}
 
 /** Re-checked on focus, so returning from system settings updates the banner. */
-export function useNotificationPermission(): PermissionState | null {
-  const [state, setState] = useState<PermissionState | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      getPermissionState()
-        .then((s) => active && setState(s))
-        .catch(() => active && setState('unsupported'));
-      return () => {
-        active = false;
-      };
-    }, []),
+export function useNotificationAccess(): { access: NotificationAccess | null; refresh: () => void } {
+  const [access, setAccess] = useState<NotificationAccess | null>(null);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
   );
-  return state;
+
+  const refresh = useCallback(() => {
+    Promise.all([getPermissionState(), getExactAlarmState()])
+      .then(([notifications, exactAlarms]) => mounted.current && setAccess({ notifications, exactAlarms }))
+      .catch(() => mounted.current && setAccess({ notifications: 'unsupported', exactAlarms: 'unsupported' }));
+  }, []);
+
+  useFocusEffect(refresh);
+  return { access, refresh };
+}
+
+export function useNotificationPermission(): PermissionState | null {
+  return useNotificationAccess().access?.notifications ?? null;
 }

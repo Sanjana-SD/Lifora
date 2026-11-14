@@ -1,6 +1,16 @@
 import { addMonths, format, isSameMonth, startOfMonth } from 'date-fns';
 import { Tabs, router, type Href } from 'expo-router';
-import { BarChart3, ChevronLeft, ChevronRight, History, PieChart, Receipt, Wallet } from 'lucide-react-native';
+import {
+  BarChart3,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  FileUp,
+  History,
+  PieChart,
+  Receipt,
+  Store,
+} from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -10,17 +20,19 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { FloatingActionButton } from '@/components/common/FloatingActionButton';
 import { DashboardSection } from '@/components/dashboard/DashboardSection';
 import { CategoryBreakdown } from '@/components/finance/CategoryBreakdown';
-import { SpendingTrend } from '@/components/finance/SpendingTrend';
+import { DailySpendingChart } from '@/components/finance/DailySpendingChart';
+import { MoneyFlowChart } from '@/components/finance/MoneyFlowChart';
+import { TopPayees } from '@/components/finance/TopPayees';
 import { TransactionRow } from '@/components/finance/TransactionRow';
 import { RADIUS, SPACING, TOUCH_TARGET, TYPE } from '@/constants/appConfig';
 import { useCategoryMap } from '@/hooks/useCalendar';
 import { useFinanceDashboard } from '@/hooks/useFinance';
 import { useTheme } from '@/hooks/useTheme';
 import { toMonthKey } from '@/services/financeService';
+import { formatRelativeUpdated } from '@/utils/dateUtils';
 import { formatPaise } from '@/utils/money';
 
-const addTransaction = (type: 'expense' | 'income' = 'expense') =>
-  router.push(`/finance/add-transaction?type=${type}` as Href);
+const importStatement = () => router.push('/finance/import' as Href);
 const openTransaction = (id: number) => router.push(`/finance/transaction-details?id=${id}` as Href);
 const openHistory = () => router.push('/finance/history' as Href);
 
@@ -34,16 +46,14 @@ export default function FinanceScreen() {
   const header = (
     <Tabs.Screen
       options={{
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Transaction history"
-            onPress={openHistory}
-            hitSlop={8}
-            style={styles.headerIcon}>
-            <History size={22} color={colors.accent} />
-          </Pressable>
-        ),
+        headerRight: () =>
+          dashboard?.hasAnyTransactions ? (
+            <View style={styles.headerActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Transaction history" onPress={openHistory} hitSlop={6} style={styles.headerIcon}>
+                <History size={22} color={colors.accent} />
+              </Pressable>
+            </View>
+          ) : null,
       }}
     />
   );
@@ -69,13 +79,12 @@ export default function FinanceScreen() {
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         {header}
         <EmptyState
-          icon={Wallet}
-          title="No expenses logged yet this month."
-          description="Record what you spend and earn to see where your money goes. Everything stays on this device."
-          actionLabel="Add an expense"
-          onAction={() => addTransaction('expense')}
+          icon={FileUp}
+          title="Import your bank statement"
+          description="Download your account statement PDF from your bank's app or net banking, and LIFORA will show where your money goes. It's read on your phone and never uploaded."
+          actionLabel="Import statement PDF"
+          onAction={importStatement}
         />
-        <Button label="Add income" variant="ghost" onPress={() => addTransaction('income')} style={styles.emptySecondary} />
       </View>
     );
   }
@@ -92,7 +101,22 @@ export default function FinanceScreen() {
     <View style={[styles.flex, { backgroundColor: colors.background }]}>
       {header}
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Spending so far, always relative to today. */}
+        {/* Freshness (PRD 4.H): this view is only as current as the last statement. */}
+        {d.lastImport ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Imports a newer statement"
+            onPress={importStatement}
+            style={[styles.freshness, { backgroundColor: colors.surfaceAlt }]}>
+            <FileUp size={14} color={colors.accent} />
+            <Text style={[styles.freshnessText, { color: colors.textMuted }]} numberOfLines={1}>
+              Last imported {formatRelativeUpdated(d.lastImport.importedAt)}
+              {d.lastImport.bankName ? ` · ${d.lastImport.bankName}` : ''}
+            </Text>
+            <Text style={[styles.freshnessAction, { color: colors.accent }]}>Update</Text>
+          </Pressable>
+        ) : null}
+
         <Text style={[styles.overline, { color: colors.textMuted }]} accessibilityRole="header">
           Spent
         </Text>
@@ -111,14 +135,10 @@ export default function FinanceScreen() {
           ))}
         </View>
 
-        {/* The selected month: income, expenses, and net cash flow. */}
+        {/* The selected month: money in, money out, and net. */}
         <Card style={styles.card}>
           <View style={styles.monthNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-              onPress={() => setMonth((m) => addMonths(m, -1))}
-              style={styles.navButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setMonth((m) => addMonths(m, -1))} style={styles.navButton}>
               <ChevronLeft size={22} color={colors.accent} />
             </Pressable>
             <Text style={[styles.monthTitle, { color: colors.text }]} accessibilityRole="header">
@@ -134,25 +154,22 @@ export default function FinanceScreen() {
               <ChevronRight size={22} color={colors.accent} />
             </Pressable>
           </View>
-          <View accessible accessibilityLabel={`Net balance for ${monthName}: ${formatPaise(d.netPaise, { signed: true })}`}>
-            <Text style={[styles.netLabel, { color: colors.textMuted }]}>Net balance</Text>
-            <Text
-              style={[styles.net, { color: d.netPaise >= 0 ? colors.text : colors.danger }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit>
+          <View accessible accessibilityLabel={`Net for ${monthName}: ${formatPaise(d.netPaise, { signed: true })}`}>
+            <Text style={[styles.netLabel, { color: colors.textMuted }]}>Net (in − out)</Text>
+            <Text style={[styles.net, { color: d.netPaise >= 0 ? colors.text : colors.danger }]} numberOfLines={1} adjustsFontSizeToFit>
               {formatPaise(d.netPaise, { signed: true })}
             </Text>
           </View>
           <View style={styles.flows}>
-            <View style={styles.flow} accessible accessibilityLabel={`Income: ${formatPaise(d.incomePaise)}`}>
-              <Text style={[styles.flowLabel, { color: colors.textMuted }]}>Income</Text>
+            <View style={styles.flow} accessible accessibilityLabel={`Money in: ${formatPaise(d.incomePaise)}`}>
+              <Text style={[styles.flowLabel, { color: colors.textMuted }]}>Money in</Text>
               <Text style={[styles.flowValue, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
                 {formatPaise(d.incomePaise)}
               </Text>
             </View>
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <View style={styles.flow} accessible accessibilityLabel={`Expenses: ${formatPaise(d.expensePaise)}`}>
-              <Text style={[styles.flowLabel, { color: colors.textMuted }]}>Expenses</Text>
+            <View style={styles.flow} accessible accessibilityLabel={`Money out: ${formatPaise(d.expensePaise)}`}>
+              <Text style={[styles.flowLabel, { color: colors.textMuted }]}>Money out</Text>
               <Text style={[styles.flowValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
                 {formatPaise(d.expensePaise)}
               </Text>
@@ -160,7 +177,15 @@ export default function FinanceScreen() {
           </View>
         </Card>
 
-        <DashboardSection icon={PieChart} title={`Spending by category · ${monthName}`}>
+        <DashboardSection icon={BarChart3} title="Money in vs out">
+          <MoneyFlowChart months={d.trend} selected={toMonthKey(month)} onSelect={(m) => setMonth(startOfMonth(m))} />
+        </DashboardSection>
+
+        <DashboardSection icon={CalendarDays} title={`Daily spending · ${monthName}`}>
+          <DailySpendingChart key={toMonthKey(month)} days={d.daily} />
+        </DashboardSection>
+
+        <DashboardSection icon={PieChart} title={`By category · ${monthName}`}>
           {d.expenseByCategory.length > 0 ? (
             <CategoryBreakdown totals={d.expenseByCategory} categories={categories} />
           ) : (
@@ -168,9 +193,11 @@ export default function FinanceScreen() {
           )}
         </DashboardSection>
 
-        <DashboardSection icon={BarChart3} title="Monthly spending">
-          <SpendingTrend months={d.trend} selected={toMonthKey(month)} onSelect={(m) => setMonth(startOfMonth(m))} />
-        </DashboardSection>
+        {d.topPayees.length > 0 ? (
+          <DashboardSection icon={Store} title={`Top payees · ${monthName}`}>
+            <TopPayees payees={d.topPayees} />
+          </DashboardSection>
+        ) : null}
 
         <DashboardSection icon={Receipt} title="Recent transactions" onPress={openHistory}>
           {d.recent.map((t) => (
@@ -184,7 +211,7 @@ export default function FinanceScreen() {
           ))}
         </DashboardSection>
       </ScrollView>
-      <FloatingActionButton accessibilityLabel="Add transaction" onPress={() => addTransaction('expense')} />
+      <FloatingActionButton accessibilityLabel="Import bank statement" icon={FileUp} onPress={importStatement} />
     </View>
   );
 }
@@ -199,19 +226,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: SPACING.md,
   },
+  headerActions: {
+    flexDirection: 'row',
+    marginRight: SPACING.sm,
+  },
   headerIcon: {
     padding: SPACING.sm,
-    marginRight: SPACING.sm,
   },
   error: {
     ...TYPE.subheading,
   },
-  emptySecondary: {
-    alignSelf: 'center',
-  },
   content: {
     paddingHorizontal: SPACING.lg,
     paddingBottom: 96,
+  },
+  freshness: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    minHeight: 40,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+    marginBottom: SPACING.md,
+  },
+  freshnessText: {
+    ...TYPE.caption,
+    flex: 1,
+  },
+  freshnessAction: {
+    ...TYPE.label,
   },
   overline: {
     ...TYPE.overline,

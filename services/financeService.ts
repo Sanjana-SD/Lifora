@@ -1,31 +1,30 @@
-import {
-  addDays,
-  endOfMonth,
-  endOfWeek,
-  format,
-  parse,
-  startOfDay,
-  startOfMonth,
-  startOfWeek,
-  subMonths,
-} from 'date-fns';
+import { addDays, endOfMonth, endOfWeek, format, parse, startOfMonth, startOfWeek, subMonths } from 'date-fns';
 
+import type { PaymentMethod } from '@/constants/paymentMethods';
 import * as transactionRepository from '@/database/repositories/transactionRepository';
 import type { Category } from '@/types/category';
 import type {
   CategoryTotal,
+  DayTotal,
+  ImportSummary,
   MonthTotal,
+  PayeeTotal,
   Transaction,
-  TransactionDraft,
+  TransactionEdit,
   TransactionFilters,
   TransactionRecord,
   TransactionType,
 } from '@/types/transaction';
 import { suggestCategoryName } from '@/utils/categorySuggestion';
-import { parseAmountToPaise } from '@/utils/money';
+import { parseStatementText, type ParsedRow, type ParsedStatement } from '@/utils/statementParser';
 import { ValidationError } from '@/utils/validationUtils';
+import { readPdfText } from './documentTextService';
 
-export const DESCRIPTION_MAX_LENGTH = 200;
+// Finance is fed only by bank statements: transactions are imported from a
+// PDF the user downloads from net banking, reviewed, then saved. Nothing is
+// typed in by hand, so every figure traces back to the bank's own record.
+
+export const PAYEE_MAX_LENGTH = 60;
 export const NOTE_MAX_LENGTH = 500;
 export const TREND_MONTHS = 6;
 
@@ -39,74 +38,128 @@ export function monthRange(month: Date): { from: string; to: string } {
   return { from: toDateKey(startOfMonth(month)), to: toDateKey(endOfMonth(month)) };
 }
 
-/** Latest allowed date: tomorrow (PRD 4.B). Planned payments belong to recurring expenses, not here. */
-export function latestAllowedDate(now: Date = new Date()): Date {
-  return addDays(startOfDay(now), 1);
+// ---- Import
+
+export interface ImportCandidate {
+  key: string;
+  row: ParsedRow;
+  /** Starts as the parsed direction; the user sets it for rows needing review. */
+  type: TransactionType | null;
+  categoryId: number | null;
+  /** Matches a transaction already saved (same day, amount and narration). */
+  duplicate: boolean;
+  /** Checked for import. Duplicates and rows needing review start unchecked. */
+  selected: boolean;
 }
 
-// ---- Validation
-
-export function validateDraft(draft: TransactionDraft, now: Date = new Date()): TransactionRecord {
-  const amount = parseAmountToPaise(draft.amount);
-  if (!amount.ok) throw new ValidationError(amount.error);
-
-  if (startOfDay(draft.date) > latestAllowedDate(now)) {
-    throw new ValidationError("Dates more than a day ahead aren't allowed. Record a payment once it has happened.");
-  }
-  if (draft.categoryId === null) throw new ValidationError('Choose a category.');
-  if (draft.paymentMethod === null) {
-    throw new ValidationError(draft.type === 'income' ? 'Choose how it was received.' : 'Choose how it was paid.');
-  }
-
-  const description = draft.description.trim();
-  if (description.length > DESCRIPTION_MAX_LENGTH) {
-    throw new ValidationError(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or fewer.`);
-  }
-  const note = draft.note.trim();
-  if (note.length > NOTE_MAX_LENGTH) throw new ValidationError(`Note must be ${NOTE_MAX_LENGTH} characters or fewer.`);
-
-  return {
-    type: draft.type,
-    amountPaise: amount.paise,
-    occurredOn: toDateKey(draft.date),
-    categoryId: draft.categoryId,
-    paymentMethod: draft.paymentMethod,
-    description,
-    note,
-  };
+/** Reads a statement PDF on the device. Throws DocumentReadError (password, scanned, unsupported). */
+export async function readStatement(uri: string, password?: string): Promise<ParsedStatement> {
+  return parseStatementText(await readPdfText(uri, password));
 }
 
-export function draftFromTransaction(t: Transaction, amount: string): TransactionDraft {
-  return {
-    type: t.type,
-    amount,
-    date: fromDateKey(t.occurredOn),
-    categoryId: t.categoryId,
-    paymentMethod: t.paymentMethod,
-    description: t.description,
-    note: t.note,
-  };
+/** Category for a statement line: keyword rules first, then channel defaults, else Uncategorized. */
+export function suggestCategoryFor(row: ParsedRow, type: TransactionType | null, categories: Category[]): number | null {
+  const byName = (name: string) => categories.find((c) => c.name === name)?.id ?? null;
+  const name =
+    suggestCategoryName(`${row.counterparty} ${row.narration}`, type ?? 'expense') ??
+    (row.channel === 'ATM' ? 'Transfers' : row.channel === 'Charges' ? 'Bills and Utilities' : null);
+  return (name && byName(name)) || byName('Uncategorized');
 }
 
-/** Live suggestion while typing a description (PRD 4.D): the matching category's id, if it exists. */
-export function suggestCategoryId(description: string, type: TransactionType, categories: Category[]): number | null {
-  const name = suggestCategoryName(description, type);
-  return (name && categories.find((c) => c.name === name)?.id) || null;
+const tokens = (s: string) => new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 1));
+
+/** Same narration, allowing for spacing and punctuation differences between downloads. */
+export function similarNarration(a: string, b: string): boolean {
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (ta.size === 0 || tb.size === 0) return false;
+  let shared = 0;
+  ta.forEach((t) => {
+    if (tb.has(t)) shared += 1;
+  });
+  return shared / Math.min(ta.size, tb.size) >= 0.8;
 }
 
-// ---- CRUD
-
-export async function createTransaction(draft: TransactionDraft): Promise<number> {
-  return transactionRepository.insertTransaction(validateDraft(draft));
+/** PRD 4.C.3: exact date and amount, and a matching reference or near-identical narration. */
+export function isDuplicate(row: ParsedRow, type: TransactionType | null, existing: Transaction[]): boolean {
+  return existing.some(
+    (t) =>
+      t.occurredOn === row.date &&
+      t.amountPaise === row.amountPaise &&
+      (type === null || t.type === type) &&
+      ((row.reference !== null && t.externalReference === row.reference) || similarNarration(t.note, row.narration)),
+  );
 }
 
-export async function updateTransaction(id: number, draft: TransactionDraft): Promise<void> {
-  await transactionRepository.updateTransaction(id, validateDraft(draft));
+export async function prepareImport(statement: ParsedStatement, categories: Category[]): Promise<ImportCandidate[]> {
+  const existing =
+    statement.periodFrom && statement.periodTo
+      ? await transactionRepository.listTransactions({ from: statement.periodFrom, to: statement.periodTo })
+      : [];
+  return statement.rows.map((row, i) => {
+    const duplicate = isDuplicate(row, row.type, existing);
+    return {
+      key: `${i}`,
+      row,
+      type: row.type,
+      categoryId: suggestCategoryFor(row, row.type, categories),
+      duplicate,
+      selected: !duplicate && row.reviewReason === null,
+    };
+  });
 }
+
+/** A row can be imported once its direction is known and its date isn't in the future. */
+export const canImport = (c: ImportCandidate) => c.type !== null && !/future/.test(c.row.reviewReason ?? '');
+
+function paymentMethodFor(row: ParsedRow): PaymentMethod {
+  // A label only (PRD 4.B): UPI is never assumed to be any particular app.
+  return row.channel === 'Card' ? 'card' : 'bank_transfer';
+}
+
+export async function commitImport(input: {
+  fileName: string;
+  bankName: string | null;
+  candidates: ImportCandidate[];
+}): Promise<{ importId: number; imported: number }> {
+  const chosen = input.candidates.filter((c) => c.selected && canImport(c));
+  if (chosen.length === 0) throw new ValidationError('Choose at least one transaction to import.');
+  const records: TransactionRecord[] = chosen.map((c) => ({
+    type: c.type as TransactionType,
+    amountPaise: c.row.amountPaise,
+    occurredOn: c.row.date,
+    categoryId: c.categoryId,
+    paymentMethod: paymentMethodFor(c.row),
+    description: c.row.counterparty.slice(0, PAYEE_MAX_LENGTH),
+    note: c.row.narration.slice(0, NOTE_MAX_LENGTH),
+    externalReference: c.row.reference,
+    isDuplicateReviewed: !c.duplicate,
+  }));
+  const importId = await transactionRepository.insertImportBatch({
+    fileName: input.fileName,
+    bankName: input.bankName,
+    skippedCount: input.candidates.length - chosen.length,
+    records,
+  });
+  return { importId, imported: records.length };
+}
+
+export const getLastImport = transactionRepository.getLastImport;
+
+// ---- Viewing and correcting
 
 export const deleteTransaction = transactionRepository.deleteTransaction;
 export const getTransaction = transactionRepository.getTransaction;
 export const listTransactions = (filters: TransactionFilters = {}) => transactionRepository.listTransactions(filters);
+
+export async function updateTransactionDetails(id: number, edit: TransactionEdit): Promise<void> {
+  const description = edit.description.trim();
+  if (!description) throw new ValidationError("Payee name can't be empty.");
+  if (description.length > PAYEE_MAX_LENGTH) {
+    throw new ValidationError(`Payee name must be ${PAYEE_MAX_LENGTH} characters or fewer.`);
+  }
+  await transactionRepository.updateTransactionDetails(id, { ...edit, description });
+}
 
 // ---- History filters
 
@@ -151,6 +204,7 @@ export function groupByDay(transactions: Transaction[]): { date: string; netPais
 
 export interface FinanceDashboard {
   hasAnyTransactions: boolean;
+  lastImport: ImportSummary | null;
   /** Spending relative to today, independent of the selected month. */
   spentTodayPaise: number;
   spentThisWeekPaise: number;
@@ -160,12 +214,15 @@ export interface FinanceDashboard {
   expensePaise: number;
   netPaise: number;
   expenseByCategory: CategoryTotal[];
+  topPayees: PayeeTotal[];
+  /** Every day of the selected month, zero-filled. */
+  daily: DayTotal[];
   /** TREND_MONTHS months ending with the selected one, oldest first, zero-filled. */
   trend: MonthTotal[];
   recent: Transaction[];
 }
 
-/** Fills months with no transactions so the trend always has TREND_MONTHS bars. */
+/** Fills months with no transactions so the trend always has TREND_MONTHS entries. */
 export function fillTrend(rows: MonthTotal[], endMonth: Date): MonthTotal[] {
   const byMonth = new Map(rows.map((r) => [r.month, r]));
   return Array.from({ length: TREND_MONTHS }, (_, i) => {
@@ -174,24 +231,41 @@ export function fillTrend(rows: MonthTotal[], endMonth: Date): MonthTotal[] {
   });
 }
 
+/** One entry per day of the month, zero-filled. */
+export function fillDays(rows: DayTotal[], month: Date): DayTotal[] {
+  const byDay = new Map(rows.map((r) => [r.date, r]));
+  const first = startOfMonth(month);
+  const count = endOfMonth(month).getDate();
+  return Array.from({ length: count }, (_, i) => {
+    const key = toDateKey(addDays(first, i));
+    return byDay.get(key) ?? { date: key, incomePaise: 0, expensePaise: 0 };
+  });
+}
+
 export async function getDashboard(month: Date, now: Date = new Date()): Promise<FinanceDashboard> {
   const today = toDateKey(now);
   const selected = monthRange(month);
+  const current = monthRange(now);
   const trendFrom = toDateKey(startOfMonth(subMonths(month, TREND_MONTHS - 1)));
 
-  const [count, todayTotals, weekTotals, monthNowTotals, selectedTotals, byCategory, byMonth, recent] = await Promise.all([
-    transactionRepository.countTransactions(),
-    transactionRepository.sumByType(today, today),
-    transactionRepository.sumByType(toDateKey(startOfWeek(now)), toDateKey(endOfWeek(now))),
-    transactionRepository.sumByType(monthRange(now).from, monthRange(now).to),
-    transactionRepository.sumByType(selected.from, selected.to),
-    transactionRepository.sumByCategory('expense', selected.from, selected.to),
-    transactionRepository.sumByMonth(trendFrom, selected.to),
-    transactionRepository.listTransactions({}, 5),
-  ]);
+  const [count, lastImport, todayTotals, weekTotals, monthNowTotals, selectedTotals, byCategory, payees, byDay, byMonth, recent] =
+    await Promise.all([
+      transactionRepository.countTransactions(),
+      transactionRepository.getLastImport(),
+      transactionRepository.sumByType(today, today),
+      transactionRepository.sumByType(toDateKey(startOfWeek(now)), toDateKey(endOfWeek(now))),
+      transactionRepository.sumByType(current.from, current.to),
+      transactionRepository.sumByType(selected.from, selected.to),
+      transactionRepository.sumByCategory('expense', selected.from, selected.to),
+      transactionRepository.sumByPayee('expense', selected.from, selected.to, 5),
+      transactionRepository.sumByDay(selected.from, selected.to),
+      transactionRepository.sumByMonth(trendFrom, selected.to),
+      transactionRepository.listTransactions({}, 5),
+    ]);
 
   return {
     hasAnyTransactions: count > 0,
+    lastImport,
     spentTodayPaise: todayTotals.expensePaise,
     spentThisWeekPaise: weekTotals.expensePaise,
     spentThisMonthPaise: monthNowTotals.expensePaise,
@@ -199,6 +273,8 @@ export async function getDashboard(month: Date, now: Date = new Date()): Promise
     expensePaise: selectedTotals.expensePaise,
     netPaise: selectedTotals.incomePaise - selectedTotals.expensePaise,
     expenseByCategory: byCategory,
+    topPayees: payees,
+    daily: fillDays(byDay, month),
     trend: fillTrend(byMonth, month),
     recent,
   };
@@ -212,15 +288,17 @@ export interface FinanceHomeSummary {
   todayByCategory: CategoryTotal[];
   monthExpensePaise: number;
   monthIncomePaise: number;
+  lastImport: ImportSummary | null;
 }
 
 export async function getHomeSummary(now: Date = new Date()): Promise<FinanceHomeSummary> {
   const today = toDateKey(now);
   const month = monthRange(now);
-  const [count, todayByCategory, monthTotals] = await Promise.all([
+  const [count, todayByCategory, monthTotals, lastImport] = await Promise.all([
     transactionRepository.countTransactions(),
     transactionRepository.sumByCategory('expense', today, today),
     transactionRepository.sumByType(month.from, month.to),
+    transactionRepository.getLastImport(),
   ]);
   return {
     hasAnyTransactions: count > 0,
@@ -228,5 +306,6 @@ export async function getHomeSummary(now: Date = new Date()): Promise<FinanceHom
     todayByCategory,
     monthExpensePaise: monthTotals.expensePaise,
     monthIncomePaise: monthTotals.incomePaise,
+    lastImport,
   };
 }

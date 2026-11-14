@@ -7,6 +7,7 @@ import { SPACING, TYPE } from '@/constants/appConfig';
 import { useCategoryMap } from '@/hooks/useCalendar';
 import { useFinanceHomeSummary } from '@/hooks/useFinance';
 import { useTheme } from '@/hooks/useTheme';
+import { formatRelativeUpdated } from '@/utils/dateUtils';
 import { formatPaise } from '@/utils/money';
 import { AddLink } from './AddLink';
 import { DashboardSection } from './DashboardSection';
@@ -56,7 +57,12 @@ export function FinanceCard() {
           </View>
         </>
       )}
-      <AddLink label="Add an expense" onPress={() => router.push('/finance/add-transaction?type=expense' as Href)} />
+      {summary?.lastImport ? (
+        <Text style={[styles.freshness, { color: colors.textMuted }]}>
+          From your statement imported {formatRelativeUpdated(summary.lastImport.importedAt)}
+        </Text>
+      ) : null}
+      <AddLink label="Import a newer statement" onPress={() => router.push('/finance/import' as Href)} />
     </DashboardSection>
   );
 }
@@ -86,5 +92,9 @@ const styles = StyleSheet.create({
   statLabel: {
     ...TYPE.caption,
     marginTop: 2,
+  },
+  freshness: {
+    ...TYPE.caption,
+    marginTop: SPACING.md,
   },
 });

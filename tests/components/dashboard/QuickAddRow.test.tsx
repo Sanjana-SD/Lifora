@@ -15,9 +15,9 @@ describe('QuickAddRow', () => {
     (router.push as jest.Mock).mockClear();
   });
 
-  it('renders the five PRD quick-add actions', async () => {
+  it('renders the five quick actions', async () => {
     const { getByText } = await renderWithTheme(<QuickAddRow />);
-    for (const label of ['Event', 'Task', 'Reminder', 'Expense', 'Note']) {
+    for (const label of ['Event', 'Task', 'Reminder', 'Statement', 'Note']) {
       expect(getByText(label)).toBeTruthy();
     }
   });
@@ -26,7 +26,7 @@ describe('QuickAddRow', () => {
     ['Add Event', '/calendar/add-event'],
     ['Add Task', '/tasks/add-task'],
     ['Add Reminder', '/reminders/add-reminder'],
-    ['Add Expense', '/finance/add-transaction?type=expense'],
+    ['Import bank statement', '/finance/import'],
     ['Add Note', '/notes/create-note'],
   ])('%s navigates to %s', async (label, href) => {
     const { getByLabelText } = await renderWithTheme(<QuickAddRow />);

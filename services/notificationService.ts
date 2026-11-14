@@ -6,7 +6,7 @@ import * as eventRepository from '@/database/repositories/eventRepository';
 import * as reminderRepository from '@/database/repositories/reminderRepository';
 import * as taskRepository from '@/database/repositories/taskRepository';
 import { buildOccurrences } from '@/utils/eventOccurrences';
-import { diffSchedule, planNotifications, type NotificationChannel } from '@/utils/notificationPlanner';
+import { NOTIFICATION_PREFIX, diffSchedule, planNotifications, type NotificationChannel } from '@/utils/notificationPlanner';
 
 // The single owner of OS-level scheduling (PRD Section 9.2). The database
 // is the source of truth: every sync re-plans from it and diffs against
@@ -53,6 +53,61 @@ export async function getPermissionState(): Promise<PermissionState> {
   if (!supported) return 'unsupported';
   const { status } = await Notifications.getPermissionsAsync();
   return status as PermissionState;
+}
+
+/**
+ * Android 12+ only delivers alarms on time when the app may schedule exact
+ * alarms; otherwise the OS batches them and they can arrive late. Android
+ * 14+ denies this by default, so the user grants it once in Settings
+ * ("Alarms & reminders"). expo-notifications then uses
+ * setExactAndAllowWhileIdle, which fires on time even in Doze.
+ */
+export async function getExactAlarmState(): Promise<'granted' | 'denied' | 'unsupported'> {
+  if (Platform.OS !== 'android') return 'unsupported';
+  try {
+    const { granted } = await Notifications.getExactAlarmPermissionsAsync();
+    return granted ? 'granted' : 'denied';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/** Opens the system "Alarms & reminders" screen; re-syncs on return so alarms become exact. */
+export async function requestExactAlarms(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    const { granted } = await Notifications.requestExactAlarmPermissionsAsync();
+    // Alarms already scheduled stay inexact; cancel and re-add them now.
+    if (granted) await resyncAll();
+    return granted;
+  } catch {
+    return false;
+  }
+}
+
+/** A real notification in a few seconds, so the user can confirm alerts reach them. */
+export async function sendTestNotification(): Promise<PermissionState> {
+  const state = await ensurePermission();
+  if (state !== 'granted') return state;
+  await Notifications.scheduleNotificationAsync({
+    identifier: 'test-notification',
+    content: { title: 'LIFORA notifications work', body: 'Reminders and events will alert you like this.' },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 5,
+      channelId: 'reminders',
+    },
+  });
+  return 'granted';
+}
+
+/** Cancels everything LIFORA scheduled and plans it again from the database. */
+async function resyncAll(): Promise<void> {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if (n.identifier.startsWith(NOTIFICATION_PREFIX)) await Notifications.cancelScheduledNotificationAsync(n.identifier);
+  }
+  await syncNotifications();
 }
 
 /** Asks only when the OS still allows asking; never nags after a denial. */

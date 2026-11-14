@@ -13,12 +13,19 @@
     "android": {
       "package": "com.lifora.app",
       "adaptiveIcon": {
-        "backgroundColor": "#2F6F4F",
+        "backgroundColor": "#800020",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -32,20 +39,42 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FFFFF0",
+          "dark": {
+            "backgroundColor": "#161112"
+          }
         }
       ],
       "expo-sqlite",
       [
         "expo-notifications",
         {
-          "color": "#2F6F4F",
+          "color": "#800020",
           "enableRemoteNotifications": false
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "LIFORA uses your approximate location to show the local weather on Home.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LIFORA reads dates from photos you choose so it can add them to your calendar.",
+          "cameraPermission": "LIFORA uses the camera to photograph a document and read the dates on it.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-document-picker",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Your everyday life, organized: calendar, reminders, tasks, notes and money, on your phone."
   }
 }

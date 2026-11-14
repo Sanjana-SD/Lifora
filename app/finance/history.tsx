@@ -1,6 +1,6 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { Stack, router, type Href } from 'expo-router';
-import { ReceiptText, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
+import { FileUp, ReceiptText, SearchX, SlidersHorizontal, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -155,7 +155,13 @@ export default function TransactionHistoryScreen() {
             narrowed ? (
               <EmptyState icon={SearchX} title="No matching transactions" description="Try another search, or clear the filters." />
             ) : (
-              <EmptyState icon={ReceiptText} title="No transactions yet" description="Expenses and income you add will be listed here." />
+              <EmptyState
+                icon={ReceiptText}
+                title="No transactions yet"
+                description="Import a bank statement and its transactions will be listed here."
+                actionLabel="Import statement"
+                onAction={() => router.push('/finance/import' as Href)}
+              />
             )
           }
         />
@@ -163,8 +169,9 @@ export default function TransactionHistoryScreen() {
 
       <FloatingActionButton
         clearSystemBar
-        accessibilityLabel="Add transaction"
-        onPress={() => router.push('/finance/add-transaction' as Href)}
+        icon={FileUp}
+        accessibilityLabel="Import bank statement"
+        onPress={() => router.push('/finance/import' as Href)}
       />
       <TransactionFilterSheet visible={sheetOpen} value={filters} onChange={setFilters} onClose={() => setSheetOpen(false)} />
     </View>

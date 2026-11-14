@@ -92,6 +92,20 @@ describe('planNotifications', () => {
     expect(plan({ reminders: [reminder({ snoozedUntil: at(11, 10) })] })[0].id).not.toBe(a);
   });
 
+  it("reschedules an event when its alert offset or title is edited (same occurrence key)", () => {
+    const a = plan({ occurrences: [occurrence()] })[0].id;
+    expect(plan({ occurrences: [occurrence()] })[0].id).toBe(a);
+    expect(plan({ occurrences: [occurrence({ notificationOffsetMinutes: 60 })] })[0].id).not.toBe(a);
+    expect(plan({ occurrences: [occurrence({ title: 'Moved meeting' })] })[0].id).not.toBe(a);
+  });
+
+  it('gives an item a new id when its content changes, so edits reschedule', () => {
+    const a = plan({ reminders: [reminder()] })[0].id;
+    expect(plan({ reminders: [reminder({ title: 'Renamed' })] })[0].id).not.toBe(a);
+    expect(plan({ reminders: [reminder({ description: 'New details' })] })[0].id).not.toBe(a);
+    expect(a.startsWith('lifora:reminder:5:')).toBe(true);
+  });
+
   it(`keeps only the soonest ${MAX_SCHEDULED}, in time order`, () => {
     const many = Array.from({ length: 80 }, (_, i) => reminder({ id: i, dueAt: new Date(at(11).getTime() + i * 60_000) }));
     const plans = plan({ reminders: [...many].reverse() });

@@ -52,7 +52,7 @@ export function planNotifications(input: {
     const fireAt = new Date(o.start.getTime() - o.notificationOffsetMinutes * 60_000);
     if (fireAt <= now) continue;
     plans.push({
-      id: `${NOTIFICATION_PREFIX}event:${o.key}`,
+      id: `event:${o.key}`,
       channel: 'events',
       fireAt,
       title: o.title,
@@ -66,7 +66,7 @@ export function planNotifications(input: {
     const fireAt = reminderAlertTime(r);
     if (fireAt <= now) continue;
     plans.push({
-      id: `${NOTIFICATION_PREFIX}reminder:${r.id}:${fireAt.toISOString()}`,
+      id: `reminder:${r.id}`,
       channel: 'reminders',
       fireAt,
       title: r.title,
@@ -80,7 +80,7 @@ export function planNotifications(input: {
     const fireAt = taskAlertTime(t);
     if (!fireAt || fireAt <= now) continue;
     plans.push({
-      id: `${NOTIFICATION_PREFIX}task:${t.id}:${fireAt.toISOString()}`,
+      id: `task:${t.id}`,
       channel: 'tasks',
       fireAt,
       title: t.title,
@@ -89,7 +89,28 @@ export function planNotifications(input: {
     });
   }
 
-  return plans.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime()).slice(0, MAX_SCHEDULED);
+  return plans
+    .sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime())
+    .slice(0, MAX_SCHEDULED)
+    .map((plan) => ({ ...plan, id: notificationId(plan) }));
+}
+
+/** djb2: a short, stable fingerprint; collisions only cost an extra reschedule. */
+function hash(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * The id encodes the item, its fire time, and its content. Any edit (new
+ * time, new alert offset, renamed title) yields a new id, so the diff
+ * cancels the stale notification and schedules the updated one.
+ */
+function notificationId(plan: PlannedNotification): string {
+  return `${NOTIFICATION_PREFIX}${plan.id}:${plan.fireAt.toISOString()}:${hash(`${plan.title}
+${plan.body}
+${plan.route}`)}`;
 }
 
 /** Which scheduled ids to cancel and which plans to add, to move from `scheduledIds` to `plans`. */

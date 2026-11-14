@@ -286,8 +286,8 @@ describe('FinanceCard', () => {
     expect(getByText('Food ₹200 · Transportation ₹150')).toBeTruthy();
     expect(getByLabelText('Spent this month: ₹12,345.00')).toBeTruthy();
     expect(getByLabelText('Income this month: ₹50,000.00')).toBeTruthy();
-    await fireEvent.press(getByText('Add an expense'));
-    expect(router.push).toHaveBeenCalledWith('/finance/add-transaction?type=expense');
+    await fireEvent.press(getByText('Import a newer statement'));
+    expect(router.push).toHaveBeenCalledWith('/finance/import');
     await fireEvent.press(getByText("Today's spending"));
     expect(router.push).toHaveBeenCalledWith('/(tabs)/finance');
   });

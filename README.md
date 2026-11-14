@@ -1,52 +1,68 @@
 # LIFORA
 
-**Your everyday life, organized.**
+**Your everyday life, organized.** An Android app for your calendar, reminders, tasks, notes, money and quick sums, in
+one place. Your data is stored on the phone; there's no account and no cloud sync.
 
-LIFORA is an all-in-one, offline-first personal life management app for
-Android — calendar, reminders, tasks, finance tracking (with bank statement
-CSV import), notes and checklists, and a calculator suite, all in one place
-with no account and no internet dependency.
+## Features
 
-The full specification lives in [`Lifora_Complete_PRD.md`](./Lifora_Complete_PRD.md)
-(or [`Lifora_Complete_PRD.pdf`](./Lifora_Complete_PRD.pdf)) — read Section 14
-for the phased build order this codebase follows.
+| Area | What it does |
+|---|---|
+| Home | Greeting with local weather, quick actions, today's events, reminders and tasks due, today's spending, recent notes |
+| Calendar | Month and upcoming views, repeating events, alerts; **Scan** adds dates found in a photo, screenshot or PDF |
+| Reminders & Tasks | Due times, repeats, snooze, priorities, on-time notifications |
+| Finance | **Import a bank statement PDF** (password-protected PDFs supported); spending by day, category and payee; money in vs out |
+| Notes & Checklists | Notes with colours, pins and favourites; checklists with templates |
+| Calculator | Basic calculator with history |
+| Settings | Light/Dark/System appearance, notification status and a test notification |
 
-## Stack
+Statements and documents are read **on the phone** (PDFBox and Google ML Kit). Only the phone's approximate location
+is sent to [Open-Meteo](https://open-meteo.com) to fetch the weather.
 
-React Native + Expo + TypeScript + Expo Router, with Expo SQLite for local
-storage. See PRD Section 6 for the full technology list and rationale.
-
-## Getting started
+## Development
 
 ```bash
 npm install
-npm start
+npm start          # Expo dev server (press a for Android, w for web)
+npm test           # Jest test suite
+npm run lint       # ESLint
+npx tsc --noEmit   # Type check
 ```
 
-Then press `a` to open on an Android emulator, or scan the QR code with
-Expo Go on a physical device.
+Reading PDFs and photos, and on-time notifications, use native code that **Expo Go doesn't include**. Build the
+development app once and install it on your phone:
 
-## Scripts
+```bash
+npm run build:dev   # EAS development build (APK)
+npm start           # then open the installed LIFORA app
+```
 
-| Script | Purpose |
+The web preview runs everything except reading files and notifications.
+
+## Building for release
+
+Builds run in the cloud with [EAS](https://docs.expo.dev/eas/). Log in once with `npx eas-cli@latest login`.
+
+| Command | Output |
 |---|---|
-| `npm start` | Start the Expo dev server |
-| `npm run android` | Start the dev server and open on Android |
-| `npm test` | Run the Jest test suite |
-| `npm run build:preview` | Build an installable preview APK via EAS (from Phase 11 onward) |
-| `npm run build:production` | Build a production AAB via EAS (from Phase 11 onward) |
+| `npm run build:dev` | Development APK (works with `npm start`) |
+| `npm run build:preview` | Installable APK to share for testing |
+| `npm run build:production` | Play Store app bundle (AAB) |
+| `npx eas-cli@latest submit -p android` | Uploads the latest production build to Play Console (internal track) |
+
+Android permissions: notifications, exact alarms ("Alarms & reminders", so alerts fire on time), approximate location
+(weather), camera (photographing documents). Fine location and the microphone are blocked.
 
 ## Project structure
 
-Follows the folder layout documented in PRD Section 10: `app/` for
-Expo Router screens, `components/` for UI, `services/` for business logic,
-`database/` for the SQLite schema, migrations, and repositories, `hooks/`,
-`utils/`, `types/`, and `constants/`. Folders are added incrementally as
-each phase in Section 14 builds them — not scaffolded empty up front.
-
-## Status
-
-**Phase 1 — Project Foundation** complete: navigation shell, Light/Dark/
-System theming, the shared component library (`Button`, `Card`, `Input`,
-`EmptyState`, `ConfirmDialog`), and the local database connection with its
-first migration (categories + app settings, seeded on first launch).
+```
+app/          Screens (Expo Router: every file is a route)
+components/   UI components, grouped by feature
+services/     Business logic (finance, calendar, notifications, weather, document reading)
+database/     SQLite schema, migrations and repositories (the only place with SQL)
+hooks/        React hooks that load data for screens
+utils/        Pure helpers: statement parser, date extraction, money in paise, notification planner
+constants/    Theme colours, spacing and type scale, categories
+types/        Shared TypeScript types
+tests/        Unit, component and integration tests
+docs/         Product requirements and development report
+```
